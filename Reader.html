@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Edge Reader</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+  --bg: #0f172a;
+  --panel: #020617;
+  --text: #e5e7eb;
+  --border: #1e293b;
+  --accent: #3b82f6;
+  --progress: #22c55e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+
+button {
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+button.active {
+  background: var(--progress);
+  color: var(--panel);
+}
+
+.progress-bar { height: 4px; background: var(--border); }
+.progress { height: 100%; width: 0%; background: var(--progress); }
+
+textarea {
+  width: 100%;
+  height: calc(100vh - 60px);
+  border: none;
+  outline: none;
+  padding: 48px 24px;
+  resize: none;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+article {
+  max-width: 70ch;
+  margin: 0 auto;
+  padding: 64px 24px;
+  font-size: 21px;
+  line-height: 1.95;
+}
+
+article p { margin: 1.2em 0; }
+.hidden { display: none; }
+</style>
+</head>
+
+<body>
+
+<div class="toolbar">
+  <button id="btn-read" onclick="enterReading()">📖</button>
+  <button id="btn-edit" class="secondary" onclick="enterEdit()">✏️</button>
+  <button class="secondary" onclick="changeSize(1)">A+</button>
+  <button class="secondary" onclick="changeSize(-1)">A-</button>
+  <button class="secondary" onclick="markAsRead()">🧹</button>
+  <button class="secondary" onclick="clearAll()">🗑️</button>
+</div>
+
+<div class="progress-bar">
+  <div class="progress" id="progress"></div>
+</div>
+
+<textarea id="editor" class="hidden" placeholder="Paste your chapter here..."></textarea>
+<article id="reader"></article>
+
+<script>
+const editor = document.getElementById("editor");
+const reader = document.getElementById("reader");
+const progressBar = document.getElementById("progress");
+const btnRead = document.getElementById("btn-read");
+const btnEdit = document.getElementById("btn-edit");
+
+/* STATE */
+function getFullText() {
+  return localStorage.getItem("reader_full") || "";
+}
+
+function setFullText(text) {
+  localStorage.setItem("reader_full", text);
+}
+
+function getOffset() {
+  return parseInt(localStorage.getItem("reader_offset") || "0");
+}
+
+function setOffset(val) {
+  localStorage.setItem("reader_offset", Math.max(0, val));
+}
+
+function getFontSize() {
+  return parseFloat(localStorage.getItem("reader_font")) || 21;
+}
+
+function setFontSize(size) {
+  localStorage.setItem("reader_font", size);
+}
+
+function getVisibleText() {
+  const fullText = getFullText();
+  const offset = getOffset();
+  const safeOffset = Math.min(offset, fullText.length);
+  if (safeOffset !== offset) setOffset(safeOffset);
+  return fullText.substring(safeOffset);
+}
+
+/* Apply font size to both elements */
+function applyFontSize() {
+  const fontSize = getFontSize();
+  reader.style.fontSize = fontSize + "px";
+  editor.style.fontSize = (fontSize * 0.85) + "px";
+}
+
+/* EDIT MODE */
+function enterEdit() {
+  editor.value = getVisibleText();
+  
+  reader.classList.add("hidden");
+  editor.classList.remove("hidden");
+  
+  btnEdit.classList.remove("secondary");
+  btnEdit.classList.add("active");
+  btnRead.classList.add("secondary");
+  btnRead.classList.remove("active");
+  
+  applyFontSize();
+  updateProgress();
+}
+
+/* READING MODE */
+function enterReading() {
+  const visibleText = getVisibleText();
+  reader.innerHTML = formatText(visibleText);
+  
+  editor.classList.add("hidden");
+  reader.classList.remove("hidden");
+  
+  btnRead.classList.remove("secondary");
+  btnRead.classList.add("active");
+  btnEdit.classList.add("secondary");
+  btnEdit.classList.remove("active");
+  
+  applyFontSize();
+  updateProgress();
+  window.scrollTo(0, 0);
+}
+
+/* Save edits - reconstruct full text */
+let saveTimeout;
+editor.addEventListener("input", () => {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    const currentOffset = getOffset();
+    const fullText = getFullText();
+    const readPortion = fullText.substring(0, currentOffset);
+    const newVisibleText = editor.value;
+    setFullText(readPortion + newVisibleText);
+    updateProgress();
+  }, 300);
+});
+
+/* Format text */
+function formatText(text) {
+  if (!text) return "<p style='opacity:0.5;font-style:italic'>No content. Switch to Edit mode to paste text.</p>";
+  return text
+    .trim()
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+    .map(p => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* Zoom */
+function changeSize(delta) {
+  let fontSize = getFontSize();
+  fontSize = Math.max(12, Math.min(32, fontSize + delta));
+  setFontSize(fontSize);
+  applyFontSize();
+}
+
+/* Progress */
+function updateProgress() {
+  const fullText = getFullText();
+  const offset = getOffset();
+  const percent = fullText.length ? (offset / fullText.length) * 100 : 0;
+  progressBar.style.width = percent + "%";
+  document.title = percent >= 99 ? "Edge Reader ✓" : `Edge Reader (${Math.round(percent)}%)`;
+}
+
+/* Mark as read */
+function markAsRead() {
+  const selection = window.getSelection();
+  const visibleText = getVisibleText();
+  
+  if (!selection.rangeCount || selection.isCollapsed) {
+    const nextPara = visibleText.indexOf('\n\n');
+    const advance = nextPara > 0 ? nextPara + 2 : visibleText.length;
+    setOffset(getOffset() + advance);
+    enterReading();
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  let charCount = 0;
+  const walker = document.createTreeWalker(reader, NodeFilter.SHOW_TEXT);
+  let foundEnd = false;
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node === range.endContainer) {
+      charCount += range.endOffset;
+      foundEnd = true;
+      break;
+    }
+    charCount += node.textContent.length;
+  }
+
+  if (foundEnd) {
+    setOffset(getOffset() + charCount);
+  }
+  
+  enterReading();
+}
+
+/* Clear */
+function clearAll() {
+  if (!confirm("Clear all text and progress?")) return;
+  setFullText("");
+  setOffset(0);
+  localStorage.removeItem("reader_font");
+  editor.value = "";
+  reader.innerHTML = "";
+  enterEdit();
+}
+
+/* Init */
+applyFontSize();
+enterReading();
+if (!getFullText()) enterEdit();
+</script>
+
+</body>
+</html>
