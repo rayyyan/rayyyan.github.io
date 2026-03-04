@@ -2940,10 +2940,9 @@
                     _startOffset = 0,
                     _fullText = "",
                     _paraOffsets = [];
-
-                /* Capture selection on mousedown/touchstart on the TTS button,
-     because the click event fires AFTER the selection is cleared by focus change */
                 let _pendingOffset = null;
+
+                /* Capture selection on mousedown BEFORE click clears it */
                 function _capturePending() {
                     const sel = window.getSelection();
                     if (sel && !sel.isCollapsed && sel.rangeCount) {
@@ -2970,14 +2969,10 @@
                         stop();
                         return;
                     }
-                    if (_pendingOffset !== null) {
-                        const off = _pendingOffset;
-                        _pendingOffset = null;
-                        window.getSelection()?.removeAllRanges();
-                        _speak(off);
-                    } else {
-                        _speak(0);
-                    }
+                    const off = _pendingOffset !== null ? _pendingOffset : 0;
+                    _pendingOffset = null;
+                    window.getSelection()?.removeAllRanges();
+                    _speak(off);
                 }
 
                 function stop() {
@@ -2989,7 +2984,6 @@
                     _clearHighlight();
                 }
 
-                /* Snapshot para text+offsets from DOM once before speaking */
                 function _snapshot() {
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
                     _paraOffsets = [];
@@ -3018,54 +3012,39 @@
                         _startOffset > 0 ? full.slice(_startOffset) : full;
                     if (!speakText.trim()) return;
 
-                    /* Stop any current speech first */
+                    /* Cancel previous, then speak SYNCHRONOUSLY in the same user-gesture call stack.
+       Mobile browsers (iOS/Android) block speechSynthesis inside setTimeout —
+       it must be called directly from a user gesture handler. */
                     speechSynthesis.cancel();
+
+                    utterance = new SpeechSynthesisUtterance(speakText);
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1;
+                    utterance.lang = "en-US";
+                    utterance.onboundary = (e) => {
+                        if (e.name === "word")
+                            _highlight(
+                                _startOffset + e.charIndex,
+                                e.charLength || 1,
+                            );
+                    };
+                    utterance.onend = () => {
+                        active = false;
+                        Dom.btnTts.classList.remove("active");
+                        _clearHighlight();
+                    };
+                    utterance.onerror = (e) => {
+                        if (e.error === "interrupted")
+                            return; /* harmless race after cancel() */
+                        active = false;
+                        Dom.btnTts.classList.remove("active");
+                    };
+
                     active = true;
                     Dom.btnTts.classList.add("active");
-
-                    function doSpeak() {
-                        utterance = new SpeechSynthesisUtterance(speakText);
-                        utterance.rate = 0.95;
-                        utterance.pitch = 1;
-                        utterance.lang = "en-US";
-                        utterance.onboundary = (e) => {
-                            if (e.name === "word")
-                                _highlight(
-                                    _startOffset + e.charIndex,
-                                    e.charLength || 1,
-                                );
-                        };
-                        utterance.onend = () => {
-                            active = false;
-                            Dom.btnTts.classList.remove("active");
-                            _clearHighlight();
-                        };
-                        utterance.onerror = (e) => {
-                            /* 'interrupted' fires when cancel() races with speak() — retry once */
-                            if (e.error === "interrupted") return;
-                            active = false;
-                            Dom.btnTts.classList.remove("active");
-                        };
-                        speechSynthesis.speak(utterance);
-                    }
-
-                    /* Edge/Chrome need a brief gap after cancel() before the next speak(),
-       and voices must be loaded */
-                    const voices = speechSynthesis.getVoices();
-                    if (voices.length) {
-                        setTimeout(doSpeak, 50);
-                    } else {
-                        speechSynthesis.addEventListener(
-                            "voiceschanged",
-                            doSpeak,
-                            { once: true },
-                        );
-                        /* Fallback if voiceschanged never fires */
-                        setTimeout(doSpeak, 300);
-                    }
+                    speechSynthesis.speak(utterance);
                 }
 
-                /* Highlight word using frozen snapshot — never re-walks live DOM */
                 function _highlight(charIdx, charLen) {
                     _clearHighlight();
                     for (const po of _paraOffsets) {
@@ -3094,7 +3073,6 @@
                     });
                 }
 
-                /* Walk text nodes in #reader to get char offset */
                 function _walkToNode(targetNode, targetOffset) {
                     let chars = 0;
                     const walker = document.createTreeWalker(
@@ -3109,103 +3087,8 @@
                     return 0;
                 }
 
-                /* Right-click / long-press "Read from here" menu */
-                let _menuEl = null;
-                function _initContextRead() {
-                    Dom.reader.addEventListener("contextmenu", (e) => {
-                        const para = e.target.closest("#reader p");
-                        if (!para) return;
-                        e.preventDefault();
-                        _showMenu(e.clientX, e.clientY, para);
-                    });
-                    let _lt = null;
-                    Dom.reader.addEventListener(
-                        "touchstart",
-                        (e) => {
-                            const para = e.target.closest("#reader p");
-                            if (!para) return;
-                            _lt = setTimeout(() => {
-                                const t = e.touches[0];
-                                _showMenu(t.clientX, t.clientY, para);
-                            }, 600);
-                        },
-                        { passive: true },
-                    );
-                    Dom.reader.addEventListener(
-                        "touchend",
-                        () => clearTimeout(_lt),
-                        { passive: true },
-                    );
-                    Dom.reader.addEventListener(
-                        "touchmove",
-                        () => clearTimeout(_lt),
-                        { passive: true },
-                    );
-                    document.addEventListener("pointerdown", (e) => {
-                        if (_menuEl && !_menuEl.contains(e.target)) _hideMenu();
-                    });
-                }
-
-                function _showMenu(x, y, para) {
-                    if (!_menuEl) {
-                        _menuEl = document.createElement("div");
-                        _menuEl.style.cssText =
-                            "position:fixed;z-index:800;background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 6px 24px var(--shadow);display:none;flex-direction:column;gap:2px;min-width:160px;";
-                        document.body.appendChild(_menuEl);
-                    }
-                    const sel = window.getSelection();
-                    const hasSel =
-                        sel &&
-                        !sel.isCollapsed &&
-                        sel.rangeCount &&
-                        Dom.reader.contains(
-                            sel.getRangeAt(0)?.commonAncestorContainer,
-                        );
-                    _menuEl.innerHTML = "";
-                    const mkBtn = (label, color, fn) => {
-                        const b = document.createElement("button");
-                        b.textContent = label;
-                        b.style.cssText = `background:none;border:none;cursor:pointer;color:${color || "var(--ink)"};font-family:var(--body-font);font-size:14px;padding:8px 12px;border-radius:8px;text-align:left;width:100%;transition:background .12s;white-space:nowrap;`;
-                        b.onmouseenter = () =>
-                            (b.style.background = "var(--border)");
-                        b.onmouseleave = () => (b.style.background = "none");
-                        b.onclick = () => {
-                            _hideMenu();
-                            fn();
-                        };
-                        _menuEl.appendChild(b);
-                    };
-                    if (hasSel) {
-                        mkBtn("▶ Read from selection", null, () => {
-                            const range = sel.getRangeAt(0);
-                            const off = _walkToNode(
-                                range.startContainer,
-                                range.startOffset,
-                            );
-                            sel.removeAllRanges();
-                            _speak(off);
-                        });
-                    }
-                    mkBtn("▶ Read from paragraph", null, () => {
-                        _snapshot();
-                        const po = _paraOffsets.find((p) => p.el === para);
-                        _speak(po ? po.start : 0);
-                    });
-                    if (active)
-                        mkBtn("■ Stop reading", "var(--accent)", () => stop());
-                    _menuEl.style.display = "flex";
-                    const vw = window.innerWidth,
-                        vh = window.innerHeight;
-                    _menuEl.style.left = Math.min(x, vw - 180) + "px";
-                    _menuEl.style.top = Math.min(y, vh - 120) + "px";
-                }
-                function _hideMenu() {
-                    if (_menuEl) _menuEl.style.display = "none";
-                }
-
                 Dom.btnTts.title =
-                    "Read aloud — Ctrl+P, or select text first, or right-click any paragraph";
-                _initContextRead();
+                    "Read aloud — Ctrl+P · select text first to start from selection";
 
                 return { toggle, stop };
             })();
