@@ -1,290 +1,3252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Edge Reader</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Edge Reader</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            /* §CSS-1  TOKENS */
+            :root {
+                --ink: #1a1209;
+                --paper: #f5f0e8;
+                --paper2: #ede8dc;
+                --mid: #8c7355;
+                --accent: #8b2e12;
+                --accent2: #c4622d;
+                --muted: #b5a48a;
+                --border: #d5c9b4;
+                --shadow: rgba(26, 18, 9, 0.12);
+                --fs: 21px;
+                --lh: 2.05;
+                --ns-opacity: 0;
+                --body-font: "Cormorant Garamond", Georgia, serif;
+            }
+            [data-theme="dark"] {
+                --ink: #e8dfd0;
+                --paper: #12100d;
+                --paper2: #1c1812;
+                --mid: #9a8a6e;
+                --muted: #5a4f3f;
+                --border: #2a2318;
+                --shadow: rgba(0, 0, 0, 0.45);
+            }
 
-<style>
-:root {
-  --bg: #0f172a;
-  --panel: #020617;
-  --text: #e5e7eb;
-  --border: #1e293b;
-  --accent: #3b82f6;
-  --progress: #22c55e;
-}
+            /* §CSS-2  BASE */
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                background: var(--paper);
+                color: var(--ink);
+                font-family: var(--body-font);
+                min-height: 100vh;
+                transition:
+                    background 0.4s,
+                    color 0.4s;
+                overflow-x: hidden;
+            }
 
-* { box-sizing: border-box; }
+            /* §CSS-3  NIGHT SHIFT OVERLAY */
+            #ns-layer {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                background: rgba(255, 147, 41, var(--ns-opacity));
+                pointer-events: none;
+                transition: background 0.6s;
+            }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Georgia, "Times New Roman", serif;
-}
+            /* §CSS-4  PROGRESS BAR */
+            #progress-wrap {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: var(--border);
+                z-index: 300;
+            }
+            #progress-fill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(
+                    90deg,
+                    var(--accent),
+                    var(--accent2)
+                );
+                transition: width 0.5s ease;
+            }
 
-.toolbar {
-  position: sticky;
-  top: 0;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
-  display: flex;
-  gap: 8px;
-  z-index: 100;
-}
+            /* §CSS-5  TOOLBAR */
+            #toolbar {
+                position: fixed;
+                top: 18px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                align-items: center;
+                gap: 2px;
+                background: var(--paper2);
+                border: 1px solid var(--border);
+                border-radius: 40px;
+                padding: 6px 10px;
+                box-shadow:
+                    0 8px 32px var(--shadow),
+                    0 2px 8px var(--shadow);
+                z-index: 250;
+                opacity: 0.2;
+                transition: opacity 0.3s;
+                backdrop-filter: blur(12px);
+                white-space: nowrap;
+            }
+            #toolbar:hover,
+            #toolbar:focus-within,
+            body.editing #toolbar,
+            body.library-open #toolbar {
+                opacity: 1;
+            }
+            .tb-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--mid);
+                padding: 7px 9px;
+                border-radius: 24px;
+                font-size: 15px;
+                line-height: 1;
+                transition:
+                    background 0.15s,
+                    color 0.15s,
+                    transform 0.15s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .tb-btn:hover {
+                background: var(--border);
+                color: var(--ink);
+                transform: scale(1.1);
+            }
+            .tb-btn.active {
+                color: var(--accent);
+            }
+            .tb-sep {
+                width: 1px;
+                height: 20px;
+                background: var(--border);
+                margin: 0 4px;
+            }
+            .tb-label {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: var(--muted);
+                padding: 0 6px;
+                letter-spacing: 0.05em;
+                cursor: default;
+            }
+            #tb-novel-name {
+                font-family: var(--body-font);
+                font-size: 13px;
+                color: var(--mid);
+                padding: 4px 8px;
+                max-width: 130px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                cursor: pointer;
+                border-radius: 12px;
+                transition: background 0.15s;
+            }
+            #tb-novel-name:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
 
-button {
-  background: var(--accent);
-  border: none;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-}
+            /* §CSS-6  LIBRARY */
+            #library-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.35);
+                z-index: 200;
+                display: none;
+                backdrop-filter: blur(2px);
+            }
+            #library-overlay.open {
+                display: block;
+            }
+            #library-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 340px;
+                background: var(--paper2);
+                border-right: 1px solid var(--border);
+                z-index: 210;
+                transform: translateX(-100%);
+                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                flex-direction: column;
+                box-shadow: 8px 0 40px var(--shadow);
+            }
+            #library-panel.open {
+                transform: translateX(0);
+            }
+            .lib-header {
+                padding: 24px 22px 14px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            .lib-header h2 {
+                font-family: "Playfair Display", serif;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            .lib-close {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--mid);
+                font-size: 20px;
+                padding: 4px 8px;
+                border-radius: 8px;
+                transition: background 0.15s;
+            }
+            .lib-close:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            .lib-add {
+                padding: 12px 22px;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+            .lib-add-row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            .lib-input {
+                flex: 1;
+                background: var(--paper);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 8px 12px;
+                color: var(--ink);
+                font-family: var(--body-font);
+                font-size: 15px;
+                outline: none;
+                transition: border-color 0.2s;
+            }
+            .lib-input:focus {
+                border-color: var(--accent);
+            }
+            .lib-input::placeholder {
+                color: var(--muted);
+                font-style: italic;
+            }
+            .lib-add-btn {
+                background: var(--accent);
+                border: none;
+                color: white;
+                padding: 8px 14px;
+                border-radius: 10px;
+                cursor: pointer;
+                font-family: var(--body-font);
+                font-size: 15px;
+                transition: opacity 0.2s;
+                white-space: nowrap;
+            }
+            .lib-add-btn:hover {
+                opacity: 0.85;
+            }
+            .lib-novels {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px 0;
+            }
+            .lib-novels::-webkit-scrollbar {
+                width: 4px;
+            }
+            .lib-novels::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 4px;
+            }
+            .lib-stats {
+                padding: 10px 22px;
+                border-top: 1px solid var(--border);
+                flex-shrink: 0;
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                color: var(--muted);
+            }
+            .lib-io {
+                padding: 10px 22px;
+                border-top: 1px solid var(--border);
+                flex-shrink: 0;
+                display: flex;
+                gap: 8px;
+            }
+            .lib-io-btn {
+                flex: 1;
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 8px;
+                cursor: pointer;
+                color: var(--mid);
+                font-family: var(--body-font);
+                font-size: 12px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+                text-align: center;
+            }
+            .lib-io-btn:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            .novel-item {
+                padding: 0 14px 4px;
+            }
+            .novel-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 8px;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: background 0.15s;
+                user-select: none;
+            }
+            .novel-header:hover {
+                background: var(--border);
+            }
+            .novel-arrow {
+                font-size: 10px;
+                color: var(--muted);
+                transition: transform 0.2s;
+                flex-shrink: 0;
+            }
+            .novel-item.expanded .novel-arrow {
+                transform: rotate(90deg);
+            }
+            .novel-title-text {
+                flex: 1;
+                font-family: "Playfair Display", serif;
+                font-size: 15px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .novel-item.active-novel > .novel-header .novel-title-text {
+                color: var(--accent);
+            }
+            .novel-ch-count {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                color: var(--muted);
+                flex-shrink: 0;
+            }
+            .novel-actions {
+                display: flex;
+                gap: 2px;
+                flex-shrink: 0;
+                opacity: 0;
+                transition: opacity 0.15s;
+            }
+            .novel-header:hover .novel-actions {
+                opacity: 1;
+            }
+            .novel-act-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--muted);
+                font-size: 12px;
+                padding: 2px 5px;
+                border-radius: 5px;
+                transition:
+                    color 0.15s,
+                    background 0.15s;
+            }
+            .novel-act-btn:hover {
+                color: var(--accent);
+                background: rgba(139, 46, 18, 0.1);
+            }
+            .novel-chapters {
+                display: none;
+                padding-left: 18px;
+                padding-bottom: 4px;
+            }
+            .novel-item.expanded .novel-chapters {
+                display: block;
+            }
+            .ch-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 7px 8px;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0.15s;
+            }
+            .ch-item:hover {
+                background: var(--border);
+            }
+            .ch-item.active-ch {
+                background: rgba(139, 46, 18, 0.12);
+            }
+            .ch-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--border);
+                flex-shrink: 0;
+            }
+            .ch-item.active-ch .ch-dot {
+                background: var(--accent);
+            }
+            .ch-item.ch-done .ch-dot {
+                background: var(--mid);
+            }
+            .ch-name {
+                flex: 1;
+                font-size: 14px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .ch-item.active-ch .ch-name {
+                color: var(--accent);
+                font-weight: 500;
+            }
+            .ch-item.ch-done .ch-name {
+                color: var(--muted);
+                text-decoration: line-through;
+            }
+            .ch-pct {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                color: var(--muted);
+                flex-shrink: 0;
+            }
+            .ch-actions {
+                display: flex;
+                gap: 2px;
+                flex-shrink: 0;
+                opacity: 0;
+                transition: opacity 0.15s;
+            }
+            .ch-item:hover .ch-actions {
+                opacity: 1;
+            }
+            .ch-act-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--muted);
+                font-size: 11px;
+                padding: 2px 4px;
+                border-radius: 4px;
+                transition: color 0.15s;
+            }
+            .ch-act-btn:hover {
+                color: var(--accent);
+            }
+            .add-ch-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 8px;
+                border-radius: 8px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--muted);
+                font-family: var(--body-font);
+                font-size: 13px;
+                font-style: italic;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+                width: 100%;
+            }
+            .add-ch-btn:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            .lib-empty {
+                padding: 40px 22px;
+                text-align: center;
+                font-style: italic;
+                color: var(--muted);
+                font-size: 15px;
+                line-height: 1.8;
+            }
 
-button.secondary {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
+            /* §CSS-7  READER */
+            #reader-wrap {
+                max-width: 68ch;
+                margin: 0 auto;
+                padding: 100px 28px 120px;
+            }
+            #chapter-title {
+                font-family: "Playfair Display", serif;
+                font-size: clamp(22px, 4vw, 36px);
+                font-weight: 600;
+                line-height: 1.3;
+                margin-bottom: 0.3em;
+                display: none;
+            }
+            #chapter-title.visible {
+                display: block;
+            }
+            .chapter-rule {
+                width: 60px;
+                height: 2px;
+                background: var(--accent);
+                margin-bottom: 2.4em;
+                display: none;
+            }
+            .chapter-rule.visible {
+                display: block;
+            }
+            #reader {
+                font-size: var(--fs);
+                line-height: var(--lh);
+                font-weight: 400;
+                letter-spacing: 0.01em;
+            }
+            #reader p {
+                margin: 0 0 1.35em;
+                text-indent: 2em;
+                font-feature-settings:
+                    "onum" 1,
+                    "kern" 1;
+                transition: opacity 0.3s;
+            }
+            #reader p:first-of-type {
+                text-indent: 0;
+            }
+            #reader p:first-of-type::first-letter {
+                font-family: "Playfair Display", serif;
+                font-size: 3.6em;
+                font-weight: 600;
+                float: left;
+                line-height: 0.75;
+                margin-right: 0.1em;
+                margin-top: 0.1em;
+                color: var(--accent);
+            }
+            body.focus-mode #reader p {
+                opacity: 0.18;
+            }
+            body.focus-mode #reader p.focus-active {
+                opacity: 1;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 80px 0;
+                color: var(--muted);
+                font-style: italic;
+                font-size: 1.1em;
+                line-height: 1.9;
+            }
+            .empty-state strong {
+                display: block;
+                font-family: "Playfair Display", serif;
+                font-size: 1.35em;
+                font-weight: 400;
+                color: var(--mid);
+                margin-bottom: 0.6em;
+            }
+            body.drag-over #editor {
+                outline: 2px dashed var(--accent) !important;
+                background: rgba(139, 46, 18, 0.04) !important;
+            }
 
-button.active {
-  background: var(--progress);
-  color: var(--panel);
-}
+            /* §CSS-8  EDITOR */
+            #editor {
+                display: none;
+                width: 100%;
+                min-height: calc(100vh - 180px);
+                border: none;
+                outline: none;
+                resize: none;
+                background: transparent;
+                color: var(--ink);
+                font-family: var(--body-font);
+                font-size: calc(var(--fs) * 0.88);
+                line-height: var(--lh);
+                padding: 0;
+            }
+            #editor::placeholder {
+                color: var(--muted);
+                font-style: italic;
+            }
+            body.editing #reader {
+                display: none;
+            }
+            body.editing #editor {
+                display: block;
+            }
+            body.editing #chapter-title {
+                display: none !important;
+            }
+            body.editing .chapter-rule {
+                display: none !important;
+            }
 
-.progress-bar { height: 4px; background: var(--border); }
-.progress { height: 100%; width: 0%; background: var(--progress); }
+            /* §CSS-9  TTS HIGHLIGHT */
+            .tts-word {
+                background: rgba(139, 46, 18, 0.15);
+                border-radius: 3px;
+            }
 
-textarea {
-  width: 100%;
-  height: calc(100vh - 60px);
-  border: none;
-  outline: none;
-  padding: 48px 24px;
-  resize: none;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  line-height: 1.8;
-}
+            /* §CSS-10  ANNOTATIONS */
+            .annot-span {
+                border-bottom: 2px solid rgba(196, 98, 45, 0.55);
+                cursor: help;
+                position: relative;
+            }
+            .annot-span:hover {
+                background: rgba(196, 98, 45, 0.08);
+                border-radius: 2px;
+            }
+            .annot-tooltip {
+                display: none;
+                position: absolute;
+                bottom: calc(100% + 8px);
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--paper2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+                font-style: italic;
+                color: var(--ink);
+                white-space: nowrap;
+                max-width: 260px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                box-shadow: 0 4px 20px var(--shadow);
+                z-index: 500;
+                pointer-events: none;
+                font-family: var(--body-font);
+            }
+            .annot-span:hover .annot-tooltip {
+                display: block;
+            }
+            #annot-bar {
+                position: fixed;
+                background: var(--paper2);
+                border: 1px solid var(--border);
+                border-radius: 24px;
+                padding: 5px 8px;
+                display: none;
+                align-items: center;
+                gap: 4px;
+                box-shadow: 0 4px 20px var(--shadow);
+                z-index: 400;
+            }
+            #annot-bar.visible {
+                display: flex;
+            }
+            #annot-bar button {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--mid);
+                font-family: var(--body-font);
+                font-size: 13px;
+                padding: 4px 8px;
+                border-radius: 16px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+                white-space: nowrap;
+            }
+            #annot-bar button:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            #annot-list-wrap {
+                display: none;
+                margin-top: 10px;
+                border-top: 1px solid var(--border);
+                padding-top: 10px;
+            }
+            #annot-list-wrap.visible {
+                display: block;
+            }
+            .annot-list-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 6px 0;
+                border-bottom: 1px solid var(--border);
+            }
+            .annot-list-item:last-child {
+                border-bottom: none;
+            }
+            .annot-list-quote {
+                color: var(--mid);
+                font-style: italic;
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .annot-list-note {
+                color: var(--ink);
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .annot-del-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--muted);
+                font-size: 11px;
+                padding: 2px 4px;
+                flex-shrink: 0;
+                transition: color 0.15s;
+            }
+            .annot-del-btn:hover {
+                color: var(--accent);
+            }
 
-article {
-  max-width: 70ch;
-  margin: 0 auto;
-  padding: 64px 24px;
-  font-size: 21px;
-  line-height: 1.95;
-}
+            /* §CSS-11  SETTINGS PANEL */
+            #feat-panel {
+                position: fixed;
+                right: 24px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: var(--paper2);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 20px 18px;
+                width: 262px;
+                box-shadow: 0 12px 40px var(--shadow);
+                z-index: 240;
+                display: none;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            #feat-panel::-webkit-scrollbar {
+                width: 3px;
+            }
+            #feat-panel::-webkit-scrollbar-thumb {
+                background: var(--border);
+            }
+            #feat-panel.open {
+                display: block;
+            }
+            #feat-panel h3 {
+                font-family: "Playfair Display", serif;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--mid);
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                margin-bottom: 14px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--border);
+            }
+            .feat-sec {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                color: var(--muted);
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                margin: 12px 0 6px;
+            }
+            .feat-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+                gap: 8px;
+            }
+            .feat-row > label:first-child {
+                font-size: 15px;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                gap: 1px;
+            }
+            .feat-row > label:first-child span {
+                font-size: 11px;
+                color: var(--muted);
+                font-style: italic;
+            }
 
-article p { margin: 1.2em 0; }
-.hidden { display: none; }
-</style>
-</head>
+            /* font picker */
+            .font-picker {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .font-btn {
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 5px 10px;
+                cursor: pointer;
+                font-size: 13px;
+                color: var(--mid);
+                transition: all 0.15s;
+                line-height: 1;
+            }
+            .font-btn:hover {
+                border-color: var(--accent);
+                color: var(--ink);
+            }
+            .font-btn.active {
+                border-color: var(--accent);
+                background: rgba(139, 46, 18, 0.08);
+                color: var(--accent);
+            }
 
-<body>
+            /* font size stepper */
+            .fs-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .fs-row > label {
+                flex: 1;
+                font-size: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 1px;
+            }
+            .fs-row > label > span {
+                font-size: 11px;
+                color: var(--muted);
+                font-style: italic;
+            }
+            .fs-stepper {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .fs-step-btn {
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                color: var(--mid);
+                font-size: 14px;
+                line-height: 1;
+                transition: background 0.15s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .fs-step-btn:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            #fs-display {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: var(--accent);
+                min-width: 30px;
+                text-align: center;
+            }
 
-<div class="toolbar">
-  <button id="btn-read" onclick="enterReading()">📖</button>
-  <button id="btn-edit" class="secondary" onclick="enterEdit()">✏️</button>
-  <button class="secondary" onclick="changeSize(1)">A+</button>
-  <button class="secondary" onclick="changeSize(-1)">A-</button>
-  <button class="secondary" onclick="markAsRead()">🧹</button>
-  <button class="secondary" onclick="clearAll()">🗑️</button>
-</div>
+            /* sliders */
+            .slider-wrap {
+                margin-bottom: 10px;
+            }
+            .slider-wrap > label {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                font-size: 15px;
+            }
+            .slider-wrap > label > span {
+                font-size: 11px;
+                color: var(--muted);
+                font-style: italic;
+            }
+            .slider-val {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                color: var(--accent);
+                float: right;
+            }
+            .slider-wrap input[type="range"] {
+                width: 100%;
+                margin-top: 4px;
+                cursor: pointer;
+                accent-color: var(--accent2);
+            }
 
-<div class="progress-bar">
-  <div class="progress" id="progress"></div>
-</div>
+            /* background presets */
+            .bg-presets {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 10px;
+                flex-wrap: wrap;
+            }
+            .bg-btn {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                cursor: pointer;
+                border: 2px solid var(--border);
+                transition:
+                    border-color 0.15s,
+                    transform 0.15s;
+                flex-shrink: 0;
+            }
+            .bg-btn:hover {
+                transform: scale(1.15);
+            }
+            .bg-btn.active {
+                border-color: var(--accent) !important;
+                box-shadow: 0 0 0 2px var(--accent2);
+            }
 
-<textarea id="editor" class="hidden" placeholder="Paste your chapter here..."></textarea>
-<article id="reader"></article>
+            /* stats grid */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-bottom: 4px;
+            }
+            .stat-cell {
+                background: var(--paper);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 8px 10px;
+            }
+            .stat-val {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 16px;
+                color: var(--accent);
+                font-weight: bold;
+            }
+            .stat-lbl {
+                font-size: 11px;
+                color: var(--muted);
+                margin-top: 1px;
+            }
 
-<script>
-const editor = document.getElementById("editor");
-const reader = document.getElementById("reader");
-const progressBar = document.getElementById("progress");
-const btnRead = document.getElementById("btn-read");
-const btnEdit = document.getElementById("btn-edit");
+            /* keyboard shortcuts */
+            .kbd-list {
+                margin-top: 4px;
+            }
+            .kbd-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 3px 0;
+                font-size: 12px;
+                color: var(--mid);
+                border-bottom: 1px solid var(--border);
+            }
+            .kbd-row:last-child {
+                border-bottom: none;
+            }
+            .kbd {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                background: var(--paper);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 1px 5px;
+                color: var(--ink);
+            }
 
-/* STATE */
-function getFullText() {
-  return localStorage.getItem("reader_full") || "";
-}
+            /* toggle switch */
+            .tog {
+                position: relative;
+                width: 38px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+            .tog input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .tog-track {
+                position: absolute;
+                inset: 0;
+                background: var(--border);
+                border-radius: 20px;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .tog input:checked + .tog-track {
+                background: var(--accent);
+            }
+            .tog-track::after {
+                content: "";
+                position: absolute;
+                left: 3px;
+                top: 3px;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: white;
+                transition: transform 0.2s;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            }
+            .tog input:checked + .tog-track::after {
+                transform: translateX(18px);
+            }
 
-function setFullText(text) {
-  localStorage.setItem("reader_full", text);
-}
+            /* §CSS-12  META BAR */
+            #meta-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--paper2);
+                border-top: 1px solid var(--border);
+                padding: 6px 24px;
+                display: flex;
+                gap: 16px;
+                align-items: center;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: var(--muted);
+                z-index: 100;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            body.editing #meta-bar {
+                opacity: 1;
+                pointer-events: all;
+            }
+            #import-btn {
+                margin-left: auto;
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 3px 10px;
+                cursor: pointer;
+                color: var(--muted);
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+            }
+            #import-btn:hover {
+                background: var(--border);
+                color: var(--ink);
+            }
+            #file-input {
+                display: none;
+            }
+            #scroll-top {
+                position: fixed;
+                bottom: 32px;
+                right: 28px;
+                width: 42px;
+                height: 42px;
+                border-radius: 50%;
+                background: var(--paper2);
+                border: 1px solid var(--border);
+                color: var(--mid);
+                font-size: 18px;
+                cursor: pointer;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 16px var(--shadow);
+                transition:
+                    transform 0.2s,
+                    color 0.15s;
+                z-index: 120;
+            }
+            #scroll-top:hover {
+                transform: translateY(-3px);
+                color: var(--ink);
+            }
+            #scroll-top.visible {
+                display: flex;
+            }
 
-function getOffset() {
-  return parseInt(localStorage.getItem("reader_offset") || "0");
-}
+            /* §CSS-13  ANIMATIONS */
+            @keyframes fadeUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            #reader p {
+                animation: fadeUp 0.35s ease both;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="ns-layer"></div>
+        <div id="progress-wrap"><div id="progress-fill"></div></div>
 
-function setOffset(val) {
-  localStorage.setItem("reader_offset", Math.max(0, val));
-}
+        <!-- TOOLBAR -->
+        <nav id="toolbar" aria-label="Reader controls">
+            <span class="tb-label">EDGE</span>
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn"
+                title="Library (Ctrl+L)"
+                onclick="Library.toggle()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <rect x="3" y="3" width="7" height="18" />
+                    <rect x="14" y="3" width="7" height="18" />
+                </svg>
+            </button>
+            <span
+                id="tb-novel-name"
+                onclick="Library.toggle()"
+                title="Open library"
+                >—</span
+            >
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn active"
+                id="btn-read"
+                title="Read mode (Ctrl+E)"
+                onclick="Reader.enterReading()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                </svg>
+            </button>
+            <button
+                class="tb-btn"
+                id="btn-edit"
+                title="Edit mode (Ctrl+E)"
+                onclick="Reader.enterEdit()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                    />
+                    <path
+                        d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                    />
+                </svg>
+            </button>
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn"
+                onclick="Reader.changeSize(1)"
+                title="Larger text (])"
+            >
+                A+
+            </button>
+            <button
+                class="tb-btn"
+                onclick="Reader.changeSize(-1)"
+                title="Smaller text ([)"
+                style="font-size: 12px"
+            >
+                A−
+            </button>
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn"
+                id="btn-tts"
+                title="Text-to-speech (Ctrl+P)"
+                onclick="TTS.toggle()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                </svg>
+            </button>
+            <button
+                class="tb-btn"
+                title="Mark as read (Ctrl+M)"
+                onclick="Reader.markAsRead()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <polyline points="9 11 12 14 22 4" />
+                    <path
+                        d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                    />
+                </svg>
+            </button>
+            <button
+                class="tb-btn"
+                title="Dark / light (Ctrl+D)"
+                onclick="Theme.toggle()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+            </button>
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn"
+                title="Settings (Ctrl+,)"
+                onclick="Features.togglePanel()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"
+                    />
+                </svg>
+            </button>
+            <button
+                class="tb-btn"
+                title="Reset progress"
+                onclick="Reader.resetProgress()"
+            >
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
+                </svg>
+            </button>
+        </nav>
 
-function getFontSize() {
-  return parseFloat(localStorage.getItem("reader_font")) || 21;
-}
+        <!-- LIBRARY -->
+        <div id="library-overlay" onclick="Library.close()"></div>
+        <aside id="library-panel" aria-label="Library">
+            <div class="lib-header">
+                <h2>Library</h2>
+                <button class="lib-close" onclick="Library.close()">✕</button>
+            </div>
+            <div class="lib-add">
+                <div class="lib-add-row">
+                    <input
+                        class="lib-input"
+                        id="lib-novel-input"
+                        placeholder="New novel title…"
+                        maxlength="80"
+                        onkeydown="
+                            if (event.key === 'Enter') Library.addNovel();
+                        "
+                    />
+                    <button class="lib-add-btn" onclick="Library.addNovel()">
+                        Add
+                    </button>
+                </div>
+            </div>
+            <div class="lib-novels" id="lib-novels-list"></div>
+            <div class="lib-io">
+                <button
+                    class="lib-io-btn"
+                    onclick="IO.exportBackup()"
+                    title="Export library as JSON"
+                >
+                    ⬇ Backup
+                </button>
+                <button
+                    class="lib-io-btn"
+                    onclick="IO.importBackup()"
+                    title="Restore from JSON"
+                >
+                    ⬆ Restore
+                </button>
+                <button
+                    class="lib-io-btn"
+                    onclick="IO.exportChapter()"
+                    title="Export chapter as .txt"
+                >
+                    📄 Export
+                </button>
+            </div>
+            <div class="lib-stats" id="lib-stats"></div>
+        </aside>
 
-function setFontSize(size) {
-  localStorage.setItem("reader_font", size);
-}
+        <!-- SETTINGS PANEL -->
+        <div id="feat-panel">
+            <h3>Settings</h3>
 
-function getVisibleText() {
-  const fullText = getFullText();
-  const offset = getOffset();
-  const safeOffset = Math.min(offset, fullText.length);
-  if (safeOffset !== offset) setOffset(safeOffset);
-  return fullText.substring(safeOffset);
-}
+            <div class="feat-sec">Font</div>
+            <div class="font-picker" id="font-picker">
+                <button
+                    class="font-btn active"
+                    style="font-family: &quot;Cormorant Garamond&quot;, serif"
+                    data-font="cormorant"
+                    onclick="FontPicker.set('cormorant', this)"
+                >
+                    Cormorant
+                </button>
+                <button
+                    class="font-btn"
+                    style="font-family: &quot;Lora&quot;, serif"
+                    data-font="lora"
+                    onclick="FontPicker.set('lora', this)"
+                >
+                    Lora
+                </button>
+                <button
+                    class="font-btn"
+                    style="font-family: &quot;Merriweather&quot;, serif"
+                    data-font="merriweather"
+                    onclick="FontPicker.set('merriweather', this)"
+                >
+                    Merri
+                </button>
+                <button
+                    class="font-btn"
+                    style="font-family: Georgia, serif"
+                    data-font="georgia"
+                    onclick="FontPicker.set('georgia', this)"
+                >
+                    Georgia
+                </button>
+                <button
+                    class="font-btn"
+                    style="font-family: system-ui, sans-serif"
+                    data-font="sans"
+                    onclick="FontPicker.set('sans', this)"
+                >
+                    Sans
+                </button>
+            </div>
 
-/* Apply font size to both elements */
-function applyFontSize() {
-  const fontSize = getFontSize();
-  reader.style.fontSize = fontSize + "px";
-  editor.style.fontSize = (fontSize * 0.85) + "px";
-}
+            <div class="fs-row">
+                <label>Font size<span>Reading text size</span></label>
+                <div class="fs-stepper">
+                    <button class="fs-step-btn" onclick="Reader.changeSize(-1)">
+                        −
+                    </button>
+                    <span id="fs-display">21px</span>
+                    <button class="fs-step-btn" onclick="Reader.changeSize(1)">
+                        +
+                    </button>
+                </div>
+            </div>
 
-/* EDIT MODE */
-function enterEdit() {
-  editor.value = getVisibleText();
-  
-  reader.classList.add("hidden");
-  editor.classList.remove("hidden");
-  
-  btnEdit.classList.remove("secondary");
-  btnEdit.classList.add("active");
-  btnRead.classList.add("secondary");
-  btnRead.classList.remove("active");
-  
-  applyFontSize();
-  updateProgress();
-}
+            <div class="slider-wrap">
+                <label for="lh-slider"
+                    >Line height<span>Space between lines</span>
+                    <span class="slider-val" id="lh-display">2.05×</span>
+                    <input
+                        type="range"
+                        id="lh-slider"
+                        min="1.4"
+                        max="2.8"
+                        step="0.05"
+                        value="2.05"
+                        oninput="
+                            DisplayOptions.setLineHeight(parseFloat(this.value))
+                        "
+                    />
+                </label>
+            </div>
 
-/* READING MODE */
-function enterReading() {
-  const visibleText = getVisibleText();
-  reader.innerHTML = formatText(visibleText);
-  
-  editor.classList.add("hidden");
-  reader.classList.remove("hidden");
-  
-  btnRead.classList.remove("secondary");
-  btnRead.classList.add("active");
-  btnEdit.classList.add("secondary");
-  btnEdit.classList.remove("active");
-  
-  applyFontSize();
-  updateProgress();
-  window.scrollTo(0, 0);
-}
+            <div class="feat-sec">Typography</div>
+            <div class="feat-row">
+                <label for="f-dropcap"
+                    >Drop cap<span>Styled first letter</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-dropcap"
+                        checked
+                        onchange="Features.apply()" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
+            <div class="feat-row">
+                <label for="f-indent"
+                    >Indent<span>Para indentation</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-indent"
+                        checked
+                        onchange="Features.apply()" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
+            <div class="feat-row">
+                <label for="f-title"
+                    >Chapter title<span>Auto-detect first line</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-title"
+                        checked
+                        onchange="Features.apply()" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
 
-/* Save edits - reconstruct full text */
-let saveTimeout;
-editor.addEventListener("input", () => {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    const currentOffset = getOffset();
-    const fullText = getFullText();
-    const readPortion = fullText.substring(0, currentOffset);
-    const newVisibleText = editor.value;
-    setFullText(readPortion + newVisibleText);
-    updateProgress();
-  }, 300);
-});
+            <div class="feat-sec">Background</div>
+            <div class="bg-presets" id="bg-presets">
+                <button
+                    class="bg-btn active"
+                    data-bg="parchment"
+                    title="Parchment"
+                    style="background: #f5f0e8"
+                    onclick="DisplayOptions.setBg('parchment', this)"
+                ></button>
+                <button
+                    class="bg-btn"
+                    data-bg="white"
+                    title="White"
+                    style="background: #ffffff"
+                    onclick="DisplayOptions.setBg('white', this)"
+                ></button>
+                <button
+                    class="bg-btn"
+                    data-bg="cream"
+                    title="Cream"
+                    style="background: #fdf6e3"
+                    onclick="DisplayOptions.setBg('cream', this)"
+                ></button>
+                <button
+                    class="bg-btn"
+                    data-bg="slate"
+                    title="Dark slate"
+                    style="background: #1e2030"
+                    onclick="DisplayOptions.setBg('slate', this)"
+                ></button>
+                <button
+                    class="bg-btn"
+                    data-bg="black"
+                    title="Pure black"
+                    style="background: #000000"
+                    onclick="DisplayOptions.setBg('black', this)"
+                ></button>
+            </div>
 
-/* Format text */
-function formatText(text) {
-  if (!text) return "<p style='opacity:0.5;font-style:italic'>No content. Switch to Edit mode to paste text.</p>";
-  return text
-    .trim()
-    .split(/\n\s*\n/)
-    .map(p => p.trim())
-    .filter(p => p.length > 0)
-    .map(p => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
-    .join("");
-}
+            <div class="feat-sec">Reading</div>
+            <div class="feat-row">
+                <label for="f-progress"
+                    >Progress bar<span>Top reading %</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-progress"
+                        checked
+                        onchange="Features.apply()" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
+            <div class="feat-row">
+                <label for="f-focus"
+                    >Focus mode<span>Dim other paragraphs</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-focus"
+                        onchange="FocusMode.toggle(this.checked)" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+            <div class="feat-sec">Display</div>
+            <div class="slider-wrap">
+                <label for="ns-slider"
+                    >Night shift<span>Warm amber overlay</span>
+                    <span class="slider-val" id="ns-display">0%</span>
+                    <input
+                        type="range"
+                        id="ns-slider"
+                        min="0"
+                        max="0.35"
+                        step="0.01"
+                        value="0"
+                        oninput="NightShift.set(parseFloat(this.value))"
+                    />
+                </label>
+            </div>
 
-/* Zoom */
-function changeSize(delta) {
-  let fontSize = getFontSize();
-  fontSize = Math.max(12, Math.min(32, fontSize + delta));
-  setFontSize(fontSize);
-  applyFontSize();
-}
+            <div class="feat-sec">Annotations</div>
+            <div class="feat-row">
+                <label for="f-annot"
+                    >Annotations<span>Highlight &amp; note text</span></label
+                >
+                <label class="tog"
+                    ><input
+                        type="checkbox"
+                        id="f-annot"
+                        onchange="Annotations.toggleMode(this.checked)" />
+                    <div class="tog-track"></div
+                ></label>
+            </div>
+            <div id="annot-list-wrap"><div id="annot-list"></div></div>
 
-/* Progress */
-function updateProgress() {
-  const fullText = getFullText();
-  const offset = getOffset();
-  const percent = fullText.length ? (offset / fullText.length) * 100 : 0;
-  progressBar.style.width = percent + "%";
-  document.title = percent >= 99 ? "Edge Reader ✓" : `Edge Reader (${Math.round(percent)}%)`;
-}
+            <div class="feat-sec">Stats</div>
+            <div class="stats-grid">
+                <div class="stat-cell">
+                    <div class="stat-val" id="stat-today">0m</div>
+                    <div class="stat-lbl">Today</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-val" id="stat-total">0m</div>
+                    <div class="stat-lbl">All time</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-val" id="stat-streak">0</div>
+                    <div class="stat-lbl">Day streak 🔥</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-val" id="stat-session">0m</div>
+                    <div class="stat-lbl">This session</div>
+                </div>
+            </div>
 
-/* Mark as read */
-function markAsRead() {
-  const selection = window.getSelection();
-  const visibleText = getVisibleText();
-  
-  if (!selection.rangeCount || selection.isCollapsed) {
-    const nextPara = visibleText.indexOf('\n\n');
-    const advance = nextPara > 0 ? nextPara + 2 : visibleText.length;
-    setOffset(getOffset() + advance);
-    enterReading();
-    return;
-  }
+            <div class="feat-sec">Shortcuts</div>
+            <div class="kbd-list">
+                <div class="kbd-row">
+                    <span>Read / Edit</span><kbd class="kbd">Ctrl E</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>Mark as read</span><kbd class="kbd">Ctrl M</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>Library</span><kbd class="kbd">Ctrl L</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>Settings</span><kbd class="kbd">Ctrl ,</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>Font ± size</span><kbd class="kbd">] / [</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>Dark mode</span><kbd class="kbd">Ctrl D</kbd>
+                </div>
+                <div class="kbd-row">
+                    <span>TTS play/stop</span><kbd class="kbd">Ctrl P</kbd>
+                </div>
+            </div>
+        </div>
 
-  const range = selection.getRangeAt(0);
-  let charCount = 0;
-  const walker = document.createTreeWalker(reader, NodeFilter.SHOW_TEXT);
-  let foundEnd = false;
+        <!-- ANNOTATION BAR -->
+        <div id="annot-bar">
+            <button onclick="Annotations.addFromSelection()">+ Note</button>
+            <button onclick="Annotations.hideBar()">✕</button>
+        </div>
 
-  while (walker.nextNode()) {
-    const node = walker.currentNode;
-    if (node === range.endContainer) {
-      charCount += range.endOffset;
-      foundEnd = true;
-      break;
-    }
-    charCount += node.textContent.length;
-  }
+        <!-- READER -->
+        <main id="reader-wrap">
+            <h1 id="chapter-title"></h1>
+            <div class="chapter-rule" id="chapter-rule"></div>
+            <div id="reader"></div>
+            <textarea
+                id="editor"
+                placeholder="Paste your chapter here…&#10;&#10;Or drag-and-drop a .txt file.&#10;&#10;Switch to Read mode when done.&#10;&#10;Tip: a short first line becomes the chapter title."
+            ></textarea>
+        </main>
 
-  if (foundEnd) {
-    setOffset(getOffset() + charCount);
-  }
-  
-  enterReading();
-}
+        <!-- META BAR -->
+        <div id="meta-bar">
+            <span>📄 <span id="wc">0</span> words</span>
+            <span>📍 <span id="pct-label">0%</span> read</span>
+            <span>⏱ ~<span id="read-time">0</span> min left</span>
+            <span id="session-span" title="Session reading time">🕐 0m</span>
+            <button
+                id="import-btn"
+                onclick="document.getElementById('file-input').click()"
+            >
+                ⬆ Import .txt
+            </button>
+            <input
+                type="file"
+                id="file-input"
+                accept=".txt,text/plain"
+                onchange="IO.importTxt(this)"
+            />
+        </div>
 
-/* Clear */
-function clearAll() {
-  if (!confirm("Clear all text and progress?")) return;
-  setFullText("");
-  setOffset(0);
-  localStorage.removeItem("reader_font");
-  editor.value = "";
-  reader.innerHTML = "";
-  enterEdit();
-}
+        <button
+            id="scroll-top"
+            title="Back to top"
+            onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        >
+            ↑
+        </button>
 
-/* Init */
-applyFontSize();
-enterReading();
-if (!getFullText()) enterEdit();
-</script>
+        <script>
+            "use strict";
 
-</body>
+            /* ═══════════════════════════════════════════════════════════════════
+   §0  STORAGE ADAPTER  —  factory pattern
+   Swap the backend by replacing LocalStorageBackend with any object
+   that implements: get, set, getObj, setObj, del, exportAll, importAll
+   e.g. for React Native: AsyncStorageBackend
+        for Electron:     FsBackend
+        for cloud:        SupabaseBackend
+═══════════════════════════════════════════════════════════════════ */
+            const StorageAdapter = (() => {
+                const LocalStorageBackend = {
+                    get: (k, fb = null) => {
+                        const v = localStorage.getItem(k);
+                        return v !== null ? v : fb;
+                    },
+                    set: (k, v) => localStorage.setItem(k, String(v)),
+                    getObj: (k, fb = null) => {
+                        try {
+                            return JSON.parse(localStorage.getItem(k)) ?? fb;
+                        } catch {
+                            return fb;
+                        }
+                    },
+                    setObj: (k, v) =>
+                        localStorage.setItem(k, JSON.stringify(v)),
+                    del: (k) => localStorage.removeItem(k),
+                    exportAll: (pfx = "er_") => {
+                        const o = {};
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const k = localStorage.key(i);
+                            if (k.startsWith(pfx))
+                                o[k] = localStorage.getItem(k);
+                        }
+                        return o;
+                    },
+                    importAll: (obj, pfx = "er_") => {
+                        const del = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const k = localStorage.key(i);
+                            if (k.startsWith(pfx)) del.push(k);
+                        }
+                        del.forEach((k) => localStorage.removeItem(k));
+                        Object.entries(obj).forEach(([k, v]) =>
+                            localStorage.setItem(k, v),
+                        );
+                    },
+                };
+                /* ← swap here to change backend */
+                return LocalStorageBackend;
+            })();
+            const Store = StorageAdapter; /* alias used throughout */
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §1  DB  —  novels / chapters
+   Schema: [ { id, title, chapters: [{id,title,text,offset,annotations:[]}] } ]
+═══════════════════════════════════════════════════════════════════ */
+            const DB = (() => {
+                const KN = "er_novels",
+                    KNI = "er_active_novel",
+                    KCI = "er_active_chapter";
+                const uid = () =>
+                    Date.now().toString(36) +
+                    Math.random().toString(36).slice(2, 5);
+                const load = () => Store.getObj(KN, []);
+                const save = (n) => Store.setObj(KN, n);
+                const activeNovelId = () => Store.get(KNI);
+                const activeChapterId = () => Store.get(KCI);
+                const setActive = (n, c) => {
+                    Store.set(KNI, n);
+                    Store.set(KCI, c);
+                };
+
+                function getActive() {
+                    const novels = load();
+                    const novel =
+                        novels.find((n) => n.id === activeNovelId()) || null;
+                    const chapter =
+                        novel?.chapters.find(
+                            (c) => c.id === activeChapterId(),
+                        ) || null;
+                    return { novel, chapter };
+                }
+
+                /* novels */
+                function addNovel(title) {
+                    const novels = load(),
+                        n = { id: uid(), title: title.trim(), chapters: [] };
+                    novels.push(n);
+                    save(novels);
+                    return n;
+                }
+                function deleteNovel(nid) {
+                    save(load().filter((n) => n.id !== nid));
+                    if (activeNovelId() === nid) Store.del(KNI);
+                }
+                function renameNovel(nid, title) {
+                    const novels = load(),
+                        n = novels.find((x) => x.id === nid);
+                    if (n) {
+                        n.title = title.trim();
+                        save(novels);
+                    }
+                }
+
+                /* chapters */
+                function addChapter(nid, title) {
+                    const novels = load(),
+                        novel = novels.find((n) => n.id === nid);
+                    if (!novel) return null;
+                    const ch = {
+                        id: uid(),
+                        title: title || `Chapter ${novel.chapters.length + 1}`,
+                        text: "",
+                        offset: 0,
+                        annotations: [],
+                    };
+                    novel.chapters.push(ch);
+                    save(novels);
+                    return ch;
+                }
+                function deleteChapter(nid, cid) {
+                    const novels = load(),
+                        novel = novels.find((n) => n.id === nid);
+                    if (!novel) return;
+                    novel.chapters = novel.chapters.filter((c) => c.id !== cid);
+                    save(novels);
+                    if (activeChapterId() === cid) Store.del(KCI);
+                }
+                function renameChapter(nid, cid, title) {
+                    const novels = load(),
+                        ch = novels
+                            .find((n) => n.id === nid)
+                            ?.chapters.find((c) => c.id === cid);
+                    if (ch) {
+                        ch.title = title.trim();
+                        save(novels);
+                    }
+                }
+                function updateChapter(nid, cid, fields) {
+                    const novels = load(),
+                        ch = novels
+                            .find((n) => n.id === nid)
+                            ?.chapters.find((c) => c.id === cid);
+                    if (ch) {
+                        Object.assign(ch, fields);
+                        save(novels);
+                    }
+                }
+                function getChapter(nid, cid) {
+                    return (
+                        load()
+                            .find((n) => n.id === nid)
+                            ?.chapters.find((c) => c.id === cid) || null
+                    );
+                }
+
+                return {
+                    load,
+                    save,
+                    activeNovelId,
+                    activeChapterId,
+                    setActive,
+                    getActive,
+                    addNovel,
+                    deleteNovel,
+                    renameNovel,
+                    addChapter,
+                    deleteChapter,
+                    renameChapter,
+                    updateChapter,
+                    getChapter,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §2  SETTINGS  —  all persisted preferences
+═══════════════════════════════════════════════════════════════════ */
+            const Settings = {
+                getFs: () => parseFloat(Store.get("er_fs", "21")),
+                setFs: (v) => Store.set("er_fs", v),
+                getLh: () => parseFloat(Store.get("er_lh", "2.05")),
+                setLh: (v) => Store.set("er_lh", v),
+                getTheme: () => Store.get("er_theme", "light"),
+                setTheme: (v) => Store.set("er_theme", v),
+                getFeats: () => Store.getObj("er_feats", {}),
+                setFeats: (v) => Store.setObj("er_feats", v),
+                getNs: () => parseFloat(Store.get("er_ns", "0")),
+                setNs: (v) => Store.set("er_ns", v),
+                getFont: () => Store.get("er_font", "cormorant"),
+                setFont: (v) => Store.set("er_font", v),
+                getBg: () => Store.get("er_bg", "parchment"),
+                setBg: (v) => Store.set("er_bg", v),
+            };
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §3  DOM REFERENCES
+═══════════════════════════════════════════════════════════════════ */
+            const Dom = {
+                reader: document.getElementById("reader"),
+                editor: document.getElementById("editor"),
+                chTitle: document.getElementById("chapter-title"),
+                chRule: document.getElementById("chapter-rule"),
+                progFill: document.getElementById("progress-fill"),
+                btnRead: document.getElementById("btn-read"),
+                btnEdit: document.getElementById("btn-edit"),
+                btnTts: document.getElementById("btn-tts"),
+                novelBadge: document.getElementById("tb-novel-name"),
+                novelsList: document.getElementById("lib-novels-list"),
+                libPanel: document.getElementById("library-panel"),
+                libOverlay: document.getElementById("library-overlay"),
+                libStats: document.getElementById("lib-stats"),
+                novelInput: document.getElementById("lib-novel-input"),
+                metaWc: document.getElementById("wc"),
+                metaPct: document.getElementById("pct-label"),
+                metaTime: document.getElementById("read-time"),
+                metaSession: document.getElementById("session-span"),
+                scrollTop: document.getElementById("scroll-top"),
+                nsSlider: document.getElementById("ns-slider"),
+                nsDisplay: document.getElementById("ns-display"),
+                lhSlider: document.getElementById("lh-slider"),
+                lhDisplay: document.getElementById("lh-display"),
+                fsDisplay: document.getElementById("fs-display"),
+                annotBar: document.getElementById("annot-bar"),
+                annotList: document.getElementById("annot-list"),
+                annotWrap: document.getElementById("annot-list-wrap"),
+                fileInput: document.getElementById("file-input"),
+                statToday: document.getElementById("stat-today"),
+                statTotal: document.getElementById("stat-total"),
+                statStreak: document.getElementById("stat-streak"),
+                statSession: document.getElementById("stat-session"),
+            };
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §4  THEME
+═══════════════════════════════════════════════════════════════════ */
+            const Theme = {
+                apply: () => {
+                    document.documentElement.dataset.theme =
+                        Settings.getTheme() === "dark" ? "dark" : "";
+                },
+                toggle: () => {
+                    Settings.setTheme(
+                        Settings.getTheme() === "dark" ? "light" : "dark",
+                    );
+                    Theme.apply();
+                },
+            };
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §5  FONT PICKER
+═══════════════════════════════════════════════════════════════════ */
+            const FontPicker = (() => {
+                const FONTS = {
+                    cormorant: "'Cormorant Garamond', Georgia, serif",
+                    lora: "'Lora', Georgia, serif",
+                    merriweather: "'Merriweather', Georgia, serif",
+                    georgia: "Georgia, 'Times New Roman', serif",
+                    sans: "system-ui, -apple-system, sans-serif",
+                };
+                function apply(key) {
+                    document.documentElement.style.setProperty(
+                        "--body-font",
+                        FONTS[key] || FONTS.cormorant,
+                    );
+                    document
+                        .querySelectorAll(".font-btn")
+                        .forEach((b) =>
+                            b.classList.toggle(
+                                "active",
+                                b.dataset.font === key,
+                            ),
+                        );
+                }
+                function set(key) {
+                    Settings.setFont(key);
+                    apply(key);
+                }
+                function load() {
+                    apply(Settings.getFont());
+                }
+                return { apply, set, load };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §6  DISPLAY OPTIONS  —  line height + background presets
+═══════════════════════════════════════════════════════════════════ */
+            const DisplayOptions = (() => {
+                /* background preset definitions: paper bg, paper2, ink, border */
+                const BG = {
+                    parchment: {
+                        paper: "#f5f0e8",
+                        paper2: "#ede8dc",
+                        ink: "#1a1209",
+                        border: "#d5c9b4",
+                    },
+                    white: {
+                        paper: "#ffffff",
+                        paper2: "#f5f5f5",
+                        ink: "#111111",
+                        border: "#e0e0e0",
+                    },
+                    cream: {
+                        paper: "#fdf6e3",
+                        paper2: "#f5edd5",
+                        ink: "#1a1209",
+                        border: "#ddd5bd",
+                    },
+                    slate: {
+                        paper: "#1e2030",
+                        paper2: "#252837",
+                        ink: "#c8cde8",
+                        border: "#353a52",
+                    },
+                    black: {
+                        paper: "#000000",
+                        paper2: "#0d0d0d",
+                        ink: "#dddddd",
+                        border: "#2a2a2a",
+                    },
+                };
+
+                function applyBg(key) {
+                    const bg = BG[key] || BG.parchment;
+                    const r = document.documentElement.style;
+                    r.setProperty("--paper", bg.paper);
+                    r.setProperty("--paper2", bg.paper2);
+                    r.setProperty("--ink", bg.ink);
+                    r.setProperty("--border", bg.border);
+                    document
+                        .querySelectorAll(".bg-btn")
+                        .forEach((b) =>
+                            b.classList.toggle("active", b.dataset.bg === key),
+                        );
+                }
+
+                function setBg(key, _btn) {
+                    Settings.setBg(key);
+                    applyBg(key);
+                }
+
+                function applyLineHeight(val) {
+                    document.documentElement.style.setProperty("--lh", val);
+                    Dom.lhSlider.value = val;
+                    Dom.lhDisplay.textContent = val.toFixed(2) + "×";
+                }
+
+                function setLineHeight(val) {
+                    Settings.setLh(val);
+                    applyLineHeight(val);
+                }
+
+                function loadAll() {
+                    applyBg(Settings.getBg());
+                    applyLineHeight(Settings.getLh());
+                }
+
+                return {
+                    setBg,
+                    applyBg,
+                    setLineHeight,
+                    applyLineHeight,
+                    loadAll,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §7  NIGHT SHIFT
+═══════════════════════════════════════════════════════════════════ */
+            const NightShift = {
+                apply: () => {
+                    const v = Settings.getNs();
+                    document.documentElement.style.setProperty(
+                        "--ns-opacity",
+                        v,
+                    );
+                    Dom.nsSlider.value = v;
+                    Dom.nsDisplay.textContent =
+                        Math.round((v / 0.35) * 100) + "%";
+                },
+                set: (v) => {
+                    Settings.setNs(v);
+                    document.documentElement.style.setProperty(
+                        "--ns-opacity",
+                        v,
+                    );
+                    Dom.nsDisplay.textContent =
+                        Math.round((v / 0.35) * 100) + "%";
+                },
+            };
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §8  FOCUS MODE
+═══════════════════════════════════════════════════════════════════ */
+            const FocusMode = (() => {
+                let active = false,
+                    rafId = null;
+
+                function _update() {
+                    const paras = Array.from(Dom.reader.querySelectorAll("p"));
+                    if (!paras.length) return;
+                    const mid = window.innerHeight / 2;
+                    let closest = paras[0],
+                        minDist = Infinity;
+                    for (const p of paras) {
+                        const r = p.getBoundingClientRect();
+                        const d = Math.abs((r.top + r.bottom) / 2 - mid);
+                        if (d < minDist) {
+                            minDist = d;
+                            closest = p;
+                        }
+                    }
+                    paras.forEach((p) =>
+                        p.classList.toggle("focus-active", p === closest),
+                    );
+                    rafId = null;
+                }
+
+                function _onScroll() {
+                    if (!active || rafId) return;
+                    rafId = requestAnimationFrame(_update);
+                }
+
+                function toggle(on) {
+                    active = on;
+                    document.body.classList.toggle("focus-mode", on);
+                    if (on) {
+                        _update();
+                        window.addEventListener("scroll", _onScroll, {
+                            passive: true,
+                        });
+                    } else {
+                        window.removeEventListener("scroll", _onScroll);
+                        Dom.reader
+                            .querySelectorAll("p")
+                            .forEach((p) => p.classList.remove("focus-active"));
+                    }
+                    const f = Settings.getFeats();
+                    f["f-focus"] = on;
+                    Settings.setFeats(f);
+                }
+
+                function refresh() {
+                    if (active) _update();
+                }
+                return { toggle, refresh };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §9  FEATURES  —  drop cap, indent, title, progress
+═══════════════════════════════════════════════════════════════════ */
+            const Features = (() => {
+                const TOGGLE_IDS = [
+                    "f-dropcap",
+                    "f-indent",
+                    "f-title",
+                    "f-progress",
+                ];
+
+                function load() {
+                    const saved = Settings.getFeats();
+                    TOGGLE_IDS.forEach((id) => {
+                        const el = document.getElementById(id);
+                        if (el && id in saved) el.checked = saved[id];
+                    });
+                    const fFocus = document.getElementById("f-focus");
+                    if (fFocus && "f-focus" in saved) {
+                        fFocus.checked = saved["f-focus"];
+                        if (saved["f-focus"]) FocusMode.toggle(true);
+                    }
+                    const fAnnot = document.getElementById("f-annot");
+                    if (fAnnot && "f-annot" in saved) {
+                        fAnnot.checked = saved["f-annot"];
+                        if (saved["f-annot"]) Annotations.toggleMode(true);
+                    }
+                }
+
+                function apply() {
+                    const saved = Settings.getFeats();
+                    TOGGLE_IDS.forEach((id) => {
+                        const el = document.getElementById(id);
+                        if (el) saved[id] = el.checked;
+                    });
+                    Settings.setFeats(saved);
+
+                    const dropcap =
+                        document.getElementById("f-dropcap").checked;
+                    const indent = document.getElementById("f-indent").checked;
+                    const progress =
+                        document.getElementById("f-progress").checked;
+
+                    let s = document.getElementById("dyn-style");
+                    if (!s) {
+                        s = document.createElement("style");
+                        s.id = "dyn-style";
+                        document.head.appendChild(s);
+                    }
+                    s.textContent = `
+      #reader p{text-indent:${indent ? "2em" : "0"}!important;}
+      #reader p:first-of-type{text-indent:0!important;}
+      #reader p:first-of-type::first-letter{
+        font-family:${dropcap ? "'Playfair Display',serif" : "inherit"};
+        font-size:${dropcap ? "3.6em" : "inherit"};
+        font-weight:${dropcap ? "600" : "inherit"};
+        float:${dropcap ? "left" : "none"};
+        line-height:${dropcap ? ".75" : "inherit"};
+        margin-right:${dropcap ? ".1em" : "0"};
+        margin-top:${dropcap ? ".1em" : "0"};
+        color:${dropcap ? "var(--accent)" : "inherit"};
+      }
+      #progress-wrap{display:${progress ? "block" : "none"}!important;}
+    `;
+
+                    if (!document.getElementById("f-title").checked) {
+                        Dom.chTitle.classList.remove("visible");
+                        Dom.chRule.classList.remove("visible");
+                    } else {
+                        Reader.renderTitle();
+                    }
+                }
+
+                const togglePanel = () =>
+                    document
+                        .getElementById("feat-panel")
+                        .classList.toggle("open");
+                return { load, apply, togglePanel };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §10  ANNOTATIONS
+═══════════════════════════════════════════════════════════════════ */
+            const Annotations = (() => {
+                let modeOn = false,
+                    _pendingSel = null;
+
+                function toggleMode(on) {
+                    modeOn = on;
+                    const f = Settings.getFeats();
+                    f["f-annot"] = on;
+                    Settings.setFeats(f);
+                    Dom.annotWrap.classList.toggle("visible", on);
+                    if (!on) hideBar();
+                    renderAnnotList();
+                }
+
+                function showBar(x, y) {
+                    Dom.annotBar.style.left = x + "px";
+                    Dom.annotBar.style.top = y - 44 + "px";
+                    Dom.annotBar.classList.add("visible");
+                }
+                function hideBar() {
+                    Dom.annotBar.classList.remove("visible");
+                    _pendingSel = null;
+                }
+
+                Dom.reader.addEventListener("mouseup", () => {
+                    if (!modeOn) return;
+                    const sel = window.getSelection();
+                    if (!sel.rangeCount || sel.isCollapsed) {
+                        hideBar();
+                        return;
+                    }
+                    const range = sel.getRangeAt(0);
+                    if (!Dom.reader.contains(range.commonAncestorContainer)) {
+                        hideBar();
+                        return;
+                    }
+                    _pendingSel = range.cloneRange();
+                    const rect = range.getBoundingClientRect();
+                    showBar(
+                        rect.left + rect.width / 2,
+                        rect.top + window.scrollY,
+                    );
+                });
+
+                function addFromSelection() {
+                    if (!_pendingSel) return;
+                    const selText = _pendingSel.toString().trim();
+                    if (!selText) {
+                        hideBar();
+                        return;
+                    }
+                    const note = prompt(
+                        "Note for this passage (blank = highlight only):",
+                        "",
+                    );
+                    if (note === null) {
+                        hideBar();
+                        return;
+                    }
+                    const chars = _charsToRangeStart(_pendingSel);
+                    const { novel: n, chapter: c } = DB.getActive();
+                    if (!n || !c) {
+                        hideBar();
+                        return;
+                    }
+                    const annots = Array.isArray(c.annotations)
+                        ? [...c.annotations]
+                        : [];
+                    annots.push({
+                        id: Date.now().toString(36),
+                        quote: selText.slice(0, 80),
+                        note: note.trim(),
+                        start: chars,
+                        len: selText.length,
+                    });
+                    DB.updateChapter(n.id, c.id, { annotations: annots });
+                    hideBar();
+                    window.getSelection().removeAllRanges();
+                    Reader.enterReading();
+                }
+
+                function _charsToRangeStart(range) {
+                    let chars = 0;
+                    const walker = document.createTreeWalker(
+                        Dom.reader,
+                        NodeFilter.SHOW_TEXT,
+                    );
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        if (node === range.startContainer) {
+                            chars += range.startOffset;
+                            break;
+                        }
+                        chars += node.textContent.length;
+                    }
+                    return chars;
+                }
+
+                function deleteAnnot(id) {
+                    const { novel: n, chapter: c } = DB.getActive();
+                    if (!n || !c || !Array.isArray(c.annotations)) return;
+                    DB.updateChapter(n.id, c.id, {
+                        annotations: c.annotations.filter((a) => a.id !== id),
+                    });
+                    Reader.enterReading();
+                }
+
+                function applyToReader() {
+                    const { chapter: c } = DB.getActive();
+                    if (
+                        !c ||
+                        !Array.isArray(c.annotations) ||
+                        !c.annotations.length
+                    )
+                        return;
+                    const annots = [...c.annotations].sort(
+                        (a, b) => a.start - b.start,
+                    );
+                    const paras = Array.from(Dom.reader.querySelectorAll("p"));
+                    let gOffset = 0;
+
+                    for (const p of paras) {
+                        const pText = p.textContent,
+                            pLen = pText.length;
+                        const pStart = gOffset,
+                            pEnd = gOffset + pLen;
+                        const ov = annots.filter(
+                            (a) => a.start < pEnd && a.start + a.len > pStart,
+                        );
+                        if (ov.length) {
+                            let html = "",
+                                cursor = 0;
+                            for (const a of ov) {
+                                const ls = Math.max(0, a.start - pStart),
+                                    le = Math.min(
+                                        pLen,
+                                        a.start + a.len - pStart,
+                                    );
+                                if (cursor < ls)
+                                    html += escHtml(pText.slice(cursor, ls));
+                                const noteAttr = a.note
+                                    ? escHtml(a.note)
+                                    : "Highlighted";
+                                html += `<span class="annot-span" data-annot-id="${escHtml(a.id)}">${escHtml(pText.slice(ls, le))}<span class="annot-tooltip">${noteAttr}</span></span>`;
+                                cursor = le;
+                            }
+                            if (cursor < pLen)
+                                html += escHtml(pText.slice(cursor));
+                            p.innerHTML = html;
+                        }
+                        gOffset = pEnd;
+                    }
+                }
+
+                function renderAnnotList() {
+                    if (!modeOn) return;
+                    const { chapter: c } = DB.getActive();
+                    const annots = c?.annotations || [];
+                    if (!annots.length) {
+                        Dom.annotList.innerHTML = `<div style="font-size:12px;font-style:italic;color:var(--muted);padding:4px 0">No annotations yet. Enable and select text to highlight.</div>`;
+                        return;
+                    }
+                    Dom.annotList.innerHTML = annots
+                        .map(
+                            (a) => `
+      <div class="annot-list-item">
+        <div style="flex:1">
+          <div class="annot-list-quote">"${escHtml(a.quote)}"</div>
+          ${a.note ? `<div class="annot-list-note">${escHtml(a.note)}</div>` : ""}
+        </div>
+        <button class="annot-del-btn" onclick="Annotations.deleteAnnot('${a.id}')" title="Delete">✕</button>
+      </div>`,
+                        )
+                        .join("");
+                }
+
+                return {
+                    toggleMode,
+                    hideBar,
+                    addFromSelection,
+                    deleteAnnot,
+                    applyToReader,
+                    renderAnnotList,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §11  SESSION TIMER + PERSISTENT READING STATS
+   Persisted keys:
+     er_stat_today_date   — "YYYY-MM-DD"
+     er_stat_today_min    — minutes read today (integer)
+     er_stat_total_min    — all-time minutes (integer)
+     er_stat_streak       — current day streak (integer)
+     er_stat_last_read    — last date a reading session occurred
+═══════════════════════════════════════════════════════════════════ */
+            const SessionTimer = (() => {
+                let seconds = 0,
+                    reading = false;
+
+                function _today() {
+                    return new Date().toISOString().slice(0, 10);
+                }
+
+                function _tick() {
+                    if (!reading || document.hidden) return;
+                    seconds++;
+                    /* every 30s flush to persistent storage */
+                    if (seconds % 30 === 0) _flushMinute();
+                    _renderAll();
+                }
+
+                function _flushMinute() {
+                    const today = _today();
+                    const storedDate = Store.get("er_stat_today_date", "");
+                    let todayMin =
+                        parseInt(Store.get("er_stat_today_min", "0"), 10) || 0;
+                    let totalMin =
+                        parseInt(Store.get("er_stat_total_min", "0"), 10) || 0;
+                    let streak =
+                        parseInt(Store.get("er_stat_streak", "0"), 10) || 0;
+                    const lastRead = Store.get("er_stat_last_read", "");
+
+                    const addMin = Math.floor(
+                        30 / 60,
+                    ); /* 30s = 0 full minutes; we use seconds for accuracy */
+                    /* increment at whole-minute boundaries in _renderAll instead */
+
+                    /* streak logic: update only when we cross a new day */
+                    if (storedDate !== today) {
+                        /* new day */
+                        const yesterday = new Date(Date.now() - 864e5)
+                            .toISOString()
+                            .slice(0, 10);
+                        if (lastRead === yesterday || lastRead === today)
+                            streak++;
+                        else if (lastRead !== today) streak = 1;
+                        Store.set("er_stat_today_date", today);
+                        Store.set("er_stat_today_min", "0");
+                        todayMin = 0;
+                    }
+
+                    /* save current elapsed minutes */
+                    const elapsedMin = Math.floor(seconds / 60);
+                    Store.set("er_stat_today_min", elapsedMin);
+                    Store.set("er_stat_total_min", totalMin + elapsedMin);
+                    Store.set("er_stat_streak", streak);
+                    Store.set("er_stat_last_read", today);
+                }
+
+                function _renderAll() {
+                    const sessionMin = Math.floor(seconds / 60);
+                    const sessionSec = seconds % 60;
+
+                    /* meta bar badge */
+                    Dom.metaSession.textContent = `🕐 ${sessionMin}m${sessionSec > 0 ? ` ${sessionSec}s` : ""}`;
+
+                    /* stats panel */
+                    const today = _today();
+                    const storedDate = Store.get("er_stat_today_date", "");
+                    const todayMin =
+                        storedDate === today
+                            ? (parseInt(
+                                  Store.get("er_stat_today_min", "0"),
+                                  10,
+                              ) || 0) + sessionMin
+                            : sessionMin;
+                    const totalMin =
+                        (parseInt(Store.get("er_stat_total_min", "0"), 10) ||
+                            0) + sessionMin;
+                    const streak =
+                        parseInt(Store.get("er_stat_streak", "0"), 10) || 0;
+
+                    Dom.statToday.textContent = _fmt(todayMin);
+                    Dom.statTotal.textContent = _fmt(totalMin);
+                    Dom.statStreak.textContent = streak;
+                    Dom.statSession.textContent = _fmt(sessionMin);
+                }
+
+                function _fmt(min) {
+                    return min >= 60
+                        ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ""}`
+                        : `${min}m`;
+                }
+
+                function startReading() {
+                    reading = true;
+                }
+                function stopReading() {
+                    reading = false;
+                    _flushMinute();
+                }
+                function init() {
+                    setInterval(_tick, 1000);
+                    _renderAll();
+                }
+
+                return { startReading, stopReading, init };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §12  IO  —  import / export
+═══════════════════════════════════════════════════════════════════ */
+            const IO = (() => {
+                function _dl(name, content, mime = "text/plain") {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(
+                        new Blob([content], { type: mime }),
+                    );
+                    a.download = name;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                }
+
+                function importTxt(input) {
+                    const file = input.files[0];
+                    if (!file) return;
+                    const fr = new FileReader();
+                    fr.onload = (e) => {
+                        Dom.editor.value = e.target.result;
+                        Dom.editor.dispatchEvent(new Event("input"));
+                        Dom.fileInput.value = "";
+                    };
+                    fr.readAsText(file);
+                }
+
+                function exportChapter() {
+                    const { novel, chapter } = DB.getActive();
+                    if (!novel || !chapter) return;
+                    _dl(
+                        `${novel.title} - ${chapter.title}.txt`.replace(
+                            /[^\w\s\-\.]/g,
+                            "",
+                        ),
+                        chapter.text,
+                    );
+                }
+
+                function exportBackup() {
+                    const json = JSON.stringify(Store.exportAll(), null, 2);
+                    _dl(
+                        `edge-reader-backup-${new Date().toISOString().slice(0, 10)}.json`,
+                        json,
+                        "application/json",
+                    );
+                }
+
+                function importBackup() {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = ".json,application/json";
+                    input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const fr = new FileReader();
+                        fr.onload = (ev) => {
+                            try {
+                                const obj = JSON.parse(ev.target.result);
+                                if (
+                                    !confirm(
+                                        "Replace current library with this backup?",
+                                    )
+                                )
+                                    return;
+                                Store.importAll(obj);
+                                location.reload();
+                            } catch {
+                                alert("Invalid backup file.");
+                            }
+                        };
+                        fr.readAsText(file);
+                    };
+                    input.click();
+                }
+
+                function initDragDrop() {
+                    document.addEventListener("dragover", (e) => {
+                        if (e.dataTransfer.types.includes("Files")) {
+                            e.preventDefault();
+                            document.body.classList.add("drag-over");
+                        }
+                    });
+                    document.addEventListener("dragleave", (e) => {
+                        if (!e.relatedTarget)
+                            document.body.classList.remove("drag-over");
+                    });
+                    document.addEventListener("drop", (e) => {
+                        e.preventDefault();
+                        document.body.classList.remove("drag-over");
+                        const file = e.dataTransfer.files[0];
+                        if (!file || !file.name.endsWith(".txt")) return;
+                        Reader.enterEdit();
+                        const fr = new FileReader();
+                        fr.onload = (ev) => {
+                            Dom.editor.value = ev.target.result;
+                            Dom.editor.dispatchEvent(new Event("input"));
+                        };
+                        fr.readAsText(file);
+                    });
+                }
+
+                return {
+                    importTxt,
+                    exportChapter,
+                    exportBackup,
+                    importBackup,
+                    initDragDrop,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §13  UTIL
+═══════════════════════════════════════════════════════════════════ */
+            function escHtml(str) {
+                const d = document.createElement("div");
+                d.textContent = str;
+                return d.innerHTML;
+            }
+
+            function buildReaderHtml(text, titleAlreadyShown) {
+                if (!text.trim())
+                    return `<div class="empty-state"><strong>Nothing here yet.</strong>Switch to Edit mode or drag a .txt file to begin reading.</div>`;
+                let lines = text.trim().split("\n");
+                if (titleAlreadyShown && lines.length > 1) {
+                    const first = lines[0].trim();
+                    if (
+                        first.length > 0 &&
+                        first.length < 80 &&
+                        first.split(" ").length <= 12
+                    )
+                        lines = lines.slice(1);
+                }
+                return lines
+                    .join("\n")
+                    .trim()
+                    .split(/\n\s*\n/)
+                    .map((p) => p.trim())
+                    .filter(Boolean)
+                    .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`)
+                    .join("");
+            }
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §14  READER  —  modes, mark-as-read (non-destructive), font, progress
+   mark-as-read advances `offset` — text is NEVER destroyed.
+   resetProgress sets offset back to 0.
+═══════════════════════════════════════════════════════════════════ */
+            const Reader = (() => {
+                const _ch = () => DB.getActive().chapter;
+                const _text = () => _ch()?.text ?? "";
+                const _offset = () => _ch()?.offset ?? 0;
+                const _visible = () => {
+                    const t = _text(),
+                        o = Math.min(_offset(), t.length);
+                    return t.substring(o);
+                };
+                const _save = (f) => {
+                    const { novel: n, chapter: c } = DB.getActive();
+                    if (n && c) DB.updateChapter(n.id, c.id, f);
+                };
+
+                function renderTitle() {
+                    if (!document.getElementById("f-title").checked)
+                        return false;
+                    const firstLine =
+                        _visible().trim().split("\n")[0]?.trim() ?? "";
+                    const show =
+                        firstLine.length > 0 &&
+                        firstLine.length < 80 &&
+                        firstLine.split(" ").length <= 12;
+                    Dom.chTitle.textContent = show ? firstLine : "";
+                    Dom.chTitle.classList.toggle("visible", show);
+                    Dom.chRule.classList.toggle("visible", show);
+                    return show;
+                }
+
+                function enterReading() {
+                    TTS.stop();
+                    const titleShown = renderTitle();
+                    Dom.reader.innerHTML = buildReaderHtml(
+                        _visible(),
+                        titleShown,
+                    );
+                    document.body.classList.remove("editing");
+                    Dom.btnRead.classList.add("active");
+                    Dom.btnEdit.classList.remove("active");
+                    applyFontSize();
+                    updateProgress();
+                    window.scrollTo(0, 0);
+                    Features.apply();
+                    Annotations.applyToReader();
+                    Annotations.renderAnnotList();
+                    FocusMode.refresh();
+                    SessionTimer.startReading();
+                }
+
+                function enterEdit() {
+                    TTS.stop();
+                    Annotations.hideBar();
+                    Dom.editor.value = _visible();
+                    document.body.classList.add("editing");
+                    Dom.btnEdit.classList.add("active");
+                    Dom.btnRead.classList.remove("active");
+                    applyFontSize();
+                    updateMeta();
+                    SessionTimer.stopReading();
+                }
+
+                let _saveTimer;
+                Dom.editor.addEventListener("input", () => {
+                    clearTimeout(_saveTimer);
+                    _saveTimer = setTimeout(() => {
+                        const ch = _ch();
+                        if (!ch) return;
+                        _save({
+                            text:
+                                ch.text.substring(0, ch.offset) +
+                                Dom.editor.value,
+                        });
+                        updateMeta();
+                    }, 300);
+                });
+
+                function applyFontSize() {
+                    const fs = Settings.getFs();
+                    document.documentElement.style.setProperty(
+                        "--fs",
+                        fs + "px",
+                    );
+                    Dom.editor.style.fontSize = fs * 0.88 + "px";
+                    Dom.fsDisplay.textContent = fs + "px";
+                }
+                function changeSize(delta) {
+                    Settings.setFs(
+                        Math.max(14, Math.min(32, Settings.getFs() + delta)),
+                    );
+                    applyFontSize();
+                }
+
+                function updateProgress() {
+                    const t = _text(),
+                        o = _offset();
+                    const pct = t.length ? (o / t.length) * 100 : 0;
+                    Dom.progFill.style.width = pct + "%";
+                    Dom.metaPct.textContent = Math.round(pct) + "%";
+                    document.title =
+                        pct >= 99
+                            ? "Edge Reader ✓"
+                            : `Edge Reader (${Math.round(pct)}%)`;
+                    Library.render();
+                }
+
+                function updateMeta() {
+                    const vt = _visible(),
+                        allText = _text();
+                    const remW = vt.trim().split(/\s+/).filter(Boolean).length;
+                    const allW = allText
+                        .trim()
+                        .split(/\s+/)
+                        .filter(Boolean).length;
+                    Dom.metaWc.textContent = allW.toLocaleString();
+                    Dom.metaTime.textContent = Math.ceil(remW / 250);
+                    Dom.metaPct.textContent = allW
+                        ? Math.round(((allW - remW) / allW) * 100) + "%"
+                        : "0%";
+                    updateProgress();
+                }
+
+                /* non-destructive mark-as-read: advances offset, never deletes text */
+                function markAsRead() {
+                    const sel = window.getSelection();
+                    const vt = _visible();
+                    const { novel: n, chapter: c } = DB.getActive();
+                    if (!n || !c) return;
+
+                    let advance;
+                    if (!sel.rangeCount || sel.isCollapsed) {
+                        const nb = vt.indexOf("\n\n");
+                        advance = nb >= 0 ? nb + 2 : vt.length;
+                    } else {
+                        const range = sel.getRangeAt(0);
+                        let chars = 0,
+                            found = false;
+                        const walker = document.createTreeWalker(
+                            Dom.reader,
+                            NodeFilter.SHOW_TEXT,
+                        );
+                        while (walker.nextNode()) {
+                            const node = walker.currentNode;
+                            if (node === range.endContainer) {
+                                chars += range.endOffset;
+                                found = true;
+                                break;
+                            }
+                            chars += node.textContent.length;
+                        }
+                        advance = found ? chars : 0;
+                    }
+
+                    DB.updateChapter(n.id, c.id, {
+                        offset: Math.min(c.text.length, c.offset + advance),
+                    });
+                    sel.removeAllRanges();
+                    enterReading();
+                }
+
+                function resetProgress() {
+                    if (
+                        !confirm(
+                            "Reset reading progress for this chapter? Text is kept.",
+                        )
+                    )
+                        return;
+                    const { novel: n, chapter: c } = DB.getActive();
+                    if (n && c) DB.updateChapter(n.id, c.id, { offset: 0 });
+                    enterReading();
+                }
+
+                function switchTo(nid, cid) {
+                    DB.setActive(nid, cid);
+                    updateNovelBadge();
+                    Library.render();
+                    enterReading();
+                }
+
+                function updateNovelBadge() {
+                    const { novel, chapter } = DB.getActive();
+                    Dom.novelBadge.textContent =
+                        novel && chapter
+                            ? `${novel.title} · ${chapter.title}`
+                            : novel
+                              ? novel.title
+                              : "—";
+                }
+
+                return {
+                    enterReading,
+                    enterEdit,
+                    renderTitle,
+                    applyFontSize,
+                    changeSize,
+                    updateProgress,
+                    updateMeta,
+                    markAsRead,
+                    resetProgress,
+                    switchTo,
+                    updateNovelBadge,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §15  LIBRARY
+═══════════════════════════════════════════════════════════════════ */
+            const Library = (() => {
+                function open() {
+                    render();
+                    Dom.libPanel.classList.add("open");
+                    Dom.libOverlay.classList.add("open");
+                    document.body.classList.add("library-open");
+                }
+                function close() {
+                    Dom.libPanel.classList.remove("open");
+                    Dom.libOverlay.classList.remove("open");
+                    document.body.classList.remove("library-open");
+                }
+                function toggle() {
+                    Dom.libPanel.classList.contains("open") ? close() : open();
+                }
+
+                function addNovel() {
+                    const title = Dom.novelInput.value.trim();
+                    if (!title) {
+                        Dom.novelInput.focus();
+                        return;
+                    }
+                    const novel = DB.addNovel(title),
+                        ch = DB.addChapter(novel.id, "Chapter 1");
+                    DB.setActive(novel.id, ch.id);
+                    Dom.novelInput.value = "";
+                    Reader.updateNovelBadge();
+                    render();
+                    close();
+                    Reader.enterEdit();
+                }
+
+                function deleteNovel(nid) {
+                    const novels = DB.load(),
+                        novel = novels.find((n) => n.id === nid);
+                    if (
+                        !novel ||
+                        !confirm(
+                            `Delete "${novel.title}" and all its chapters?`,
+                        )
+                    )
+                        return;
+                    DB.deleteNovel(nid);
+                    if (!DB.getActive().novel) {
+                        const rem = DB.load();
+                        if (rem.length && rem[0].chapters.length)
+                            DB.setActive(rem[0].id, rem[0].chapters[0].id);
+                    }
+                    Reader.updateNovelBadge();
+                    render();
+                    Reader.enterReading();
+                }
+
+                function renameNovel(nid) {
+                    const n = DB.load().find((x) => x.id === nid);
+                    if (!n) return;
+                    const t = prompt("Rename novel:", n.title);
+                    if (!t?.trim()) return;
+                    DB.renameNovel(nid, t);
+                    Reader.updateNovelBadge();
+                    render();
+                }
+
+                function addChapter(nid) {
+                    const novel = DB.load().find((n) => n.id === nid);
+                    if (!novel) return;
+                    const ch = DB.addChapter(
+                        nid,
+                        `Chapter ${novel.chapters.length + 1}`,
+                    );
+                    DB.setActive(nid, ch.id);
+                    Reader.updateNovelBadge();
+                    render();
+                    close();
+                    Reader.enterEdit();
+                }
+
+                function deleteChapter(nid, cid) {
+                    const ch = DB.getChapter(nid, cid);
+                    if (!ch || !confirm(`Delete "${ch.title}"?`)) return;
+                    const wasCurrent = DB.activeChapterId() === cid;
+                    DB.deleteChapter(nid, cid);
+                    if (wasCurrent) {
+                        const novel = DB.load().find((n) => n.id === nid);
+                        if (novel?.chapters.length)
+                            DB.setActive(nid, novel.chapters[0].id);
+                        else {
+                            const all = DB.load();
+                            if (all.length && all[0].chapters.length)
+                                DB.setActive(all[0].id, all[0].chapters[0].id);
+                        }
+                    }
+                    Reader.updateNovelBadge();
+                    render();
+                    Reader.enterReading();
+                }
+
+                function renameChapter(nid, cid) {
+                    const ch = DB.getChapter(nid, cid);
+                    if (!ch) return;
+                    const t = prompt("Rename chapter:", ch.title);
+                    if (!t?.trim()) return;
+                    DB.renameChapter(nid, cid, t);
+                    Reader.updateNovelBadge();
+                    render();
+                }
+
+                function chPct(ch) {
+                    return ch.text.length
+                        ? Math.round((ch.offset / ch.text.length) * 100)
+                        : 0;
+                }
+
+                function render() {
+                    const novels = DB.load(),
+                        activeN = DB.activeNovelId(),
+                        activeC = DB.activeChapterId();
+                    if (!novels.length) {
+                        Dom.novelsList.innerHTML = `<div class="lib-empty">No novels yet.<br>Add one above to get started.</div>`;
+                        _renderStats(novels);
+                        return;
+                    }
+
+                    Dom.novelsList.innerHTML = novels
+                        .map((novel) => {
+                            const isActive = novel.id === activeN;
+                            const chHtml = novel.chapters
+                                .map((ch) => {
+                                    const pct = chPct(ch),
+                                        isActiveCh =
+                                            ch.id === activeC && isActive;
+                                    return `<div class="ch-item ${isActiveCh ? "active-ch" : ""} ${pct >= 99 ? "ch-done" : ""}" onclick="Library._selectCh('${novel.id}','${ch.id}')">
+          <div class="ch-dot"></div>
+          <span class="ch-name">${escHtml(ch.title)}</span>
+          <span class="ch-pct">${pct > 0 ? pct + "%" : ""}</span>
+          <div class="ch-actions">
+            <button class="ch-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameChapter('${novel.id}','${ch.id}')">✎</button>
+            <button class="ch-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteChapter('${novel.id}','${ch.id}')">✕</button>
+          </div>
+        </div>`;
+                                })
+                                .join("");
+
+                            return `<div class="novel-item ${isActive ? "expanded active-novel" : ""}" id="ni-${novel.id}">
+        <div class="novel-header" onclick="Library._toggleNovel('${novel.id}')">
+          <span class="novel-arrow">▶</span>
+          <span class="novel-title-text">${escHtml(novel.title)}</span>
+          <span class="novel-ch-count">${novel.chapters.length} ch</span>
+          <div class="novel-actions">
+            <button class="novel-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameNovel('${novel.id}')">✎</button>
+            <button class="novel-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteNovel('${novel.id}')">🗑</button>
+          </div>
+        </div>
+        <div class="novel-chapters">${chHtml}<button class="add-ch-btn" onclick="Library.addChapter('${novel.id}')">+ Add chapter</button></div>
+      </div>`;
+                        })
+                        .join("");
+                    _renderStats(novels);
+                }
+
+                function _renderStats(novels) {
+                    let totalWords = 0,
+                        totalChapters = 0,
+                        totalDone = 0;
+                    novels.forEach((novel) =>
+                        novel.chapters.forEach((ch) => {
+                            totalChapters++;
+                            totalWords += ch.text
+                                .trim()
+                                .split(/\s+/)
+                                .filter(Boolean).length;
+                            if (
+                                ch.text.length &&
+                                ch.offset >= ch.text.length * 0.99
+                            )
+                                totalDone++;
+                        }),
+                    );
+                    Dom.libStats.innerHTML = `
+      <span>📚 ${novels.length} novel${novels.length !== 1 ? "s" : ""}</span>
+      <span>📄 ${totalChapters} ch</span>
+      <span>✅ ${totalDone} done</span>
+      <span>~${Math.round(totalWords / 250)} min total</span>`;
+                }
+
+                function _toggleNovel(nid) {
+                    document
+                        .getElementById("ni-" + nid)
+                        ?.classList.toggle("expanded");
+                }
+                function _selectCh(nid, cid) {
+                    Reader.switchTo(nid, cid);
+                    close();
+                }
+
+                return {
+                    open,
+                    close,
+                    toggle,
+                    addNovel,
+                    deleteNovel,
+                    renameNovel,
+                    addChapter,
+                    deleteChapter,
+                    renameChapter,
+                    render,
+                    _toggleNovel,
+                    _selectCh,
+                };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §16  TTS  —  reads ONLY from #reader paragraphs
+═══════════════════════════════════════════════════════════════════ */
+            const TTS = (() => {
+                let active = false,
+                    utterance = null;
+                function toggle() {
+                    active ? stop() : start();
+                }
+
+                function stop() {
+                    speechSynthesis.cancel();
+                    active = false;
+                    Dom.btnTts.classList.remove("active");
+                    _clear();
+                }
+
+                function start() {
+                    if (document.body.classList.contains("editing"))
+                        Reader.enterReading();
+                    const paras = Array.from(Dom.reader.querySelectorAll("p"));
+                    if (!paras.length) return;
+                    const fullText = paras
+                        .map((p) => p.textContent.trim())
+                        .join(" ");
+                    if (!fullText.trim()) return;
+                    speechSynthesis.cancel();
+                    active = true;
+                    Dom.btnTts.classList.add("active");
+                    utterance = new SpeechSynthesisUtterance(fullText);
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1;
+                    utterance.lang = "en-US";
+                    utterance.onboundary = (e) => {
+                        if (e.name === "word")
+                            _highlight(
+                                fullText,
+                                e.charIndex,
+                                e.charLength || 1,
+                            );
+                    };
+                    utterance.onend = () => {
+                        active = false;
+                        Dom.btnTts.classList.remove("active");
+                        _clear();
+                    };
+                    utterance.onerror = () => {
+                        active = false;
+                        Dom.btnTts.classList.remove("active");
+                    };
+                    speechSynthesis.speak(utterance);
+                }
+
+                function _clear() {
+                    Dom.reader
+                        .querySelectorAll(".tts-word")
+                        .forEach((el) =>
+                            el.replaceWith(
+                                document.createTextNode(el.textContent),
+                            ),
+                        );
+                }
+
+                function _highlight(fullText, charIdx, charLen) {
+                    _clear();
+                    const paras = Array.from(Dom.reader.querySelectorAll("p"));
+                    let offset = 0;
+                    for (const p of paras) {
+                        const pText = p.textContent,
+                            pEnd = offset + pText.length + 1;
+                        if (charIdx >= offset && charIdx < pEnd) {
+                            const li = charIdx - offset,
+                                word = pText.substring(li, li + charLen);
+                            if (word.trim()) {
+                                p.innerHTML =
+                                    escHtml(pText.substring(0, li)) +
+                                    `<span class="tts-word">${escHtml(word)}</span>` +
+                                    escHtml(pText.substring(li + charLen));
+                                p.querySelector(".tts-word")?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "center",
+                                });
+                            }
+                            break;
+                        }
+                        offset = pEnd;
+                    }
+                }
+
+                return { toggle, stop, start };
+            })();
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §17  KEYBOARD SHORTCUTS
+═══════════════════════════════════════════════════════════════════ */
+            document.addEventListener("keydown", (e) => {
+                const tag = document.activeElement?.tagName;
+                const typing = tag === "TEXTAREA" || tag === "INPUT";
+
+                /* shortcuts that work even while typing */
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === "e" || e.key === "E") {
+                        e.preventDefault();
+                        document.body.classList.contains("editing")
+                            ? Reader.enterReading()
+                            : Reader.enterEdit();
+                        return;
+                    }
+                    if (e.key === "m" || e.key === "M") {
+                        e.preventDefault();
+                        Reader.markAsRead();
+                        return;
+                    }
+                    if (e.key === "l" || e.key === "L") {
+                        e.preventDefault();
+                        Library.toggle();
+                        return;
+                    }
+                    if (e.key === ",") {
+                        e.preventDefault();
+                        Features.togglePanel();
+                        return;
+                    }
+                    if (e.key === "d" || e.key === "D") {
+                        e.preventDefault();
+                        Theme.toggle();
+                        return;
+                    }
+                    if (e.key === "p" || e.key === "P") {
+                        e.preventDefault();
+                        TTS.toggle();
+                        return;
+                    }
+                }
+
+                /* shortcuts that only fire when NOT typing */
+                if (!typing) {
+                    if (e.key === "]") {
+                        Reader.changeSize(1);
+                        return;
+                    }
+                    if (e.key === "[") {
+                        Reader.changeSize(-1);
+                        return;
+                    }
+                }
+            });
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §18  SCROLL & MISC LISTENERS
+═══════════════════════════════════════════════════════════════════ */
+            window.addEventListener(
+                "scroll",
+                () => {
+                    Dom.scrollTop.classList.toggle(
+                        "visible",
+                        window.scrollY > 400,
+                    );
+                    Annotations.hideBar();
+                },
+                { passive: true },
+            );
+
+            /* ═══════════════════════════════════════════════════════════════════
+   §19  INIT
+═══════════════════════════════════════════════════════════════════ */
+            (function init() {
+                Theme.apply();
+                FontPicker.load();
+                DisplayOptions.loadAll(); /* bg presets + line height */
+                NightShift.apply();
+                Features.load();
+                Reader.applyFontSize();
+                SessionTimer.init();
+                IO.initDragDrop();
+
+                if (!DB.load().length) {
+                    const n = DB.addNovel("My Novel"),
+                        ch = DB.addChapter(n.id, "Chapter 1");
+                    DB.setActive(n.id, ch.id);
+                } else if (!DB.getActive().chapter) {
+                    const novels = DB.load();
+                    if (novels.length && novels[0].chapters.length)
+                        DB.setActive(novels[0].id, novels[0].chapters[0].id);
+                }
+
+                Reader.updateNovelBadge();
+                Library.render();
+
+                const { chapter } = DB.getActive();
+                chapter?.text ? Reader.enterReading() : Reader.enterEdit();
+            })();
+        </script>
+    </body>
 </html>
