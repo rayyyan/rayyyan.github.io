@@ -1232,13 +1232,19 @@
                 background: none;
                 border: none;
                 cursor: pointer;
-                color: var(--accent);
-                font-size: 11px;
                 padding: 0 6px 0 0;
                 vertical-align: middle;
                 opacity: 0.5;
                 transition: opacity 0.15s;
                 line-height: inherit;
+                font-size: 0; /* hide any accidental text content */
+                width: 18px;
+                height: 1em;
+            }
+            .para-play-btn::after {
+                content: "▶";
+                font-size: 11px;
+                color: var(--accent);
             }
             #reader p:hover .para-play-btn {
                 display: inline;
@@ -2588,7 +2594,7 @@
                     .filter(Boolean)
                     .map(
                         (p, i) =>
-                            `<p><button class="para-play-btn" title="Read from here" onclick="TTS.speakFromPara(this.parentElement)">▶</button>${escHtml(p).replace(/\n/g, "<br>")}</p>`,
+                            `<p><button class="para-play-btn" aria-hidden="true" tabindex="-1" title="Read from here" onclick="TTS.speakFromPara(this.parentElement)"></button>${escHtml(p).replace(/\n/g, "<br>")}</p>`,
                     )
                     .join("");
             }
@@ -3006,7 +3012,12 @@
                     _paraOffsets = [];
                     let cursor = 0;
                     const parts = paras.map((p) => {
-                        const t = p.textContent;
+                        /* Clone and strip play buttons so their text isn't spoken */
+                        const clone = p.cloneNode(true);
+                        clone
+                            .querySelectorAll(".para-play-btn")
+                            .forEach((b) => b.remove());
+                        const t = clone.textContent;
                         _paraOffsets.push({
                             el: p,
                             start: cursor,
@@ -3074,7 +3085,11 @@
                             const li = charIdx - po.start;
                             const word = pText.substring(li, li + charLen);
                             if (!word.trim()) return;
+                            /* Preserve the play button, rebuild only the text content */
+                            const btn = p.querySelector(".para-play-btn");
+                            const btnHtml = btn ? btn.outerHTML : "";
                             p.innerHTML =
+                                btnHtml +
                                 escHtml(pText.substring(0, li)) +
                                 `<span class="tts-word">${escHtml(word)}</span>` +
                                 escHtml(pText.substring(li + charLen));
@@ -3088,9 +3103,30 @@
                 }
 
                 function _clearHighlight() {
-                    Dom.reader.querySelectorAll(".tts-word").forEach((el) => {
-                        el.replaceWith(document.createTextNode(el.textContent));
-                    });
+                    Dom.reader
+                        .querySelectorAll("p:has(.tts-word)")
+                        .forEach((p) => {
+                            const btn = p.querySelector(".para-play-btn");
+                            const btnHtml = btn ? btn.outerHTML : "";
+                            /* Strip tts-word spans but keep plain text */
+                            const clone = p.cloneNode(true);
+                            clone
+                                .querySelectorAll(".para-play-btn")
+                                .forEach((b) => b.remove());
+                            clone
+                                .querySelectorAll(".tts-word")
+                                .forEach((s) =>
+                                    s.replaceWith(
+                                        document.createTextNode(s.textContent),
+                                    ),
+                                );
+                            p.innerHTML =
+                                btnHtml +
+                                clone.innerHTML.replace(
+                                    /<button[^>]*class="para-play-btn"[^>]*>.*?<\/button>/g,
+                                    "",
+                                );
+                        });
                 }
 
                 function _walkToNode(targetNode, targetOffset) {
