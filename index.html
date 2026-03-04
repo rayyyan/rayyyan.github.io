@@ -2936,29 +2936,61 @@
             })();
             const TTS = (() => {
                 let active = false,
-                    utterance = null;
+                    utterance = null,
+                    startCharOffset = 0;
+
                 function toggle() {
-                    active ? stop() : start();
+                    if (active) {
+                        stop();
+                        return;
+                    }
+                    /* Check for text selection inside reader first */
+                    const sel = window.getSelection();
+                    if (sel && !sel.isCollapsed && sel.rangeCount) {
+                        const range = sel.getRangeAt(0);
+                        if (
+                            Dom.reader.contains(range.commonAncestorContainer)
+                        ) {
+                            const offset = _charOffset(
+                                range.startContainer,
+                                range.startOffset,
+                            );
+                            sel.removeAllRanges();
+                            start(offset);
+                            return;
+                        }
+                    }
+                    start(0);
                 }
+
                 function stop() {
                     speechSynthesis.cancel();
                     active = false;
+                    startCharOffset = 0;
                     Dom.btnTts.classList.remove("active");
                     _clear();
                 }
-                function start() {
+
+                function start(fromChar) {
                     if (document.body.classList.contains("editing"))
                         Reader.enterReading();
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
                     if (!paras.length) return;
-                    const fullText = paras
-                        .map((p) => p.textContent.trim())
-                        .join(" ");
+                    /* Build full text with per-para space separator */
+                    const parts = [];
+                    paras.forEach((p) => parts.push(p.textContent));
+                    const fullText = parts.join(" ");
                     if (!fullText.trim()) return;
+                    startCharOffset = fromChar || 0;
+                    const speakText =
+                        startCharOffset > 0
+                            ? fullText.slice(startCharOffset)
+                            : fullText;
+                    if (!speakText.trim()) return;
                     speechSynthesis.cancel();
                     active = true;
                     Dom.btnTts.classList.add("active");
-                    utterance = new SpeechSynthesisUtterance(fullText);
+                    utterance = new SpeechSynthesisUtterance(speakText);
                     utterance.rate = 0.95;
                     utterance.pitch = 1;
                     utterance.lang = "en-US";
@@ -2966,7 +2998,7 @@
                         if (e.name === "word")
                             _highlight(
                                 fullText,
-                                e.charIndex,
+                                startCharOffset + e.charIndex,
                                 e.charLength || 1,
                             );
                     };
@@ -2981,6 +3013,24 @@
                     };
                     speechSynthesis.speak(utterance);
                 }
+
+                /* Walk text nodes to get char position of a node+offset inside #reader */
+                function _charOffset(targetNode, targetOffset) {
+                    let chars = 0;
+                    const walker = document.createTreeWalker(
+                        Dom.reader,
+                        NodeFilter.SHOW_TEXT,
+                    );
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        if (node === targetNode) {
+                            return chars + targetOffset;
+                        }
+                        chars += node.textContent.length;
+                    }
+                    return 0;
+                }
+
                 function _clear() {
                     Dom.reader
                         .querySelectorAll(".tts-word")
@@ -2990,6 +3040,7 @@
                             ),
                         );
                 }
+
                 function _highlight(fullText, charIdx, charLen) {
                     _clear();
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
@@ -3015,6 +3066,131 @@
                         offset = pEnd;
                     }
                 }
+
+                /* Right-click / long-press "Read from here" on any paragraph */
+                function _initContextRead() {
+                    /* Desktop: right-click on a paragraph */
+                    Dom.reader.addEventListener("contextmenu", (e) => {
+                        const para = e.target.closest("#reader p");
+                        if (!para) return;
+                        e.preventDefault();
+                        _showReadMenu(e.clientX, e.clientY, para);
+                    });
+                    /* Mobile: long-press (500ms) */
+                    let _lt = null;
+                    Dom.reader.addEventListener(
+                        "touchstart",
+                        (e) => {
+                            const para = e.target.closest("#reader p");
+                            if (!para) return;
+                            _lt = setTimeout(() => {
+                                const t = e.touches[0];
+                                _showReadMenu(t.clientX, t.clientY, para);
+                            }, 500);
+                        },
+                        { passive: true },
+                    );
+                    Dom.reader.addEventListener(
+                        "touchend",
+                        () => {
+                            clearTimeout(_lt);
+                        },
+                        { passive: true },
+                    );
+                    Dom.reader.addEventListener(
+                        "touchmove",
+                        () => {
+                            clearTimeout(_lt);
+                        },
+                        { passive: true },
+                    );
+                }
+
+                let _menuEl = null;
+                function _showReadMenu(x, y, para) {
+                    if (!_menuEl) {
+                        _menuEl = document.createElement("div");
+                        _menuEl.style.cssText =
+                            "position:fixed;z-index:800;background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 6px 24px var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:160px;";
+                        document.body.appendChild(_menuEl);
+                        document.addEventListener("pointerdown", (e) => {
+                            if (!_menuEl.contains(e.target)) _hideMenu();
+                        });
+                    }
+                    const sel = window.getSelection();
+                    const hasSel =
+                        sel &&
+                        !sel.isCollapsed &&
+                        Dom.reader.contains(
+                            sel.getRangeAt(0)?.commonAncestorContainer,
+                        );
+                    _menuEl.innerHTML = "";
+                    const btnCss =
+                        "background:none;border:none;cursor:pointer;color:var(--ink);font-family:var(--body-font);font-size:14px;padding:8px 12px;border-radius:8px;text-align:left;width:100%;transition:background .12s;white-space:nowrap;";
+                    if (hasSel) {
+                        const b = document.createElement("button");
+                        b.style.cssText = btnCss;
+                        b.textContent = "▶ Read from selection";
+                        b.onmouseenter = () =>
+                            (b.style.background = "var(--border)");
+                        b.onmouseleave = () => (b.style.background = "none");
+                        b.onclick = () => {
+                            _hideMenu();
+                            const range = sel.getRangeAt(0);
+                            const off = _charOffset(
+                                range.startContainer,
+                                range.startOffset,
+                            );
+                            sel.removeAllRanges();
+                            start(off);
+                        };
+                        _menuEl.appendChild(b);
+                    }
+                    const b2 = document.createElement("button");
+                    b2.style.cssText = btnCss;
+                    b2.textContent = "▶ Read from paragraph";
+                    b2.onmouseenter = () =>
+                        (b2.style.background = "var(--border)");
+                    b2.onmouseleave = () => (b2.style.background = "none");
+                    b2.onclick = () => {
+                        _hideMenu();
+                        const off = _charOffset(para.firstChild, 0);
+                        start(off);
+                    };
+                    _menuEl.appendChild(b2);
+                    if (active) {
+                        const b3 = document.createElement("button");
+                        b3.style.cssText = btnCss + "color:var(--accent);";
+                        b3.textContent = "■ Stop reading";
+                        b3.onmouseenter = () =>
+                            (b3.style.background = "var(--border)");
+                        b3.onmouseleave = () => (b3.style.background = "none");
+                        b3.onclick = () => {
+                            _hideMenu();
+                            stop();
+                        };
+                        _menuEl.appendChild(b3);
+                    }
+                    /* Position, keep in viewport */
+                    _menuEl.style.display = "flex";
+                    const vw = window.innerWidth,
+                        vh = window.innerHeight;
+                    _menuEl.style.left = Math.min(x, vw - 180) + "px";
+                    _menuEl.style.top = Math.min(y, vh - 120) + "px";
+                }
+                function _hideMenu() {
+                    if (_menuEl) _menuEl.style.display = "none";
+                }
+
+                /* Also update toolbar TTS button tooltip */
+                function _initBtn() {
+                    Dom.btnTts.title =
+                        "Read aloud (Ctrl+P) — or select text first to start from selection";
+                }
+
+                _initContextRead();
+                _initBtn();
+
                 return { toggle, stop, start };
             })();
             document.addEventListener("keydown", (e) => {
