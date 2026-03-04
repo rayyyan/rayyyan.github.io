@@ -1075,6 +1075,156 @@
                     transform: translateY(0);
                 }
             }
+
+            /* ═══════════════════════════════════════════
+   MOBILE RESPONSIVE — fixes for small screens
+═══════════════════════════════════════════ */
+            @media (max-width: 600px) {
+                /* ── Toolbar: shrink to icon-only strip ── */
+                #toolbar {
+                    top: auto;
+                    bottom: 56px; /* sits above meta-bar */
+                    left: 8px;
+                    right: 8px;
+                    transform: none;
+                    border-radius: 20px;
+                    padding: 4px 6px;
+                    gap: 0;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    scrollbar-width: none;
+                    justify-content: space-between;
+                    opacity: 1 !important; /* always visible on mobile */
+                }
+                #toolbar::-webkit-scrollbar {
+                    display: none;
+                }
+
+                .tb-btn {
+                    padding: 8px 7px;
+                    font-size: 13px;
+                    min-width: 32px;
+                }
+                .tb-label {
+                    display: none;
+                }
+                #tb-novel-name {
+                    font-size: 11px;
+                    max-width: 80px;
+                    padding: 4px 5px;
+                }
+                .tb-sep {
+                    margin: 0 2px;
+                    height: 16px;
+                }
+
+                /* ── Library panel: full width on mobile ── */
+                #library-panel {
+                    width: 100%;
+                    border-right: none;
+                    border-top: 1px solid var(--border);
+                    top: auto;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    height: 75vh;
+                    transform: translateY(100%);
+                    border-radius: 18px 18px 0 0;
+                }
+                #library-panel.open {
+                    transform: translateY(0);
+                }
+
+                /* ── Settings panel: full-width bottom sheet ── */
+                #feat-panel {
+                    position: fixed;
+                    right: 0;
+                    left: 0;
+                    bottom: 0;
+                    top: auto;
+                    transform: none;
+                    width: 100%;
+                    border-radius: 18px 18px 0 0;
+                    max-height: 75vh;
+                    overflow-y: auto;
+                    padding: 16px 16px 32px;
+                    box-shadow: 0 -8px 40px var(--shadow);
+                }
+                /* Show as slide-up sheet */
+                #feat-panel.open {
+                    display: block;
+                }
+
+                /* ── Reader: tighter padding, smaller font floor ── */
+                #reader-wrap {
+                    padding: 80px 16px 140px;
+                }
+                #reader {
+                    font-size: clamp(16px, var(--fs), 22px);
+                }
+
+                /* ── Meta bar: simpler on mobile ── */
+                #meta-bar {
+                    padding: 5px 12px;
+                    gap: 8px;
+                    font-size: 10px;
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                }
+                #import-btn {
+                    white-space: nowrap;
+                }
+
+                /* ── Scroll-to-top: keep above toolbar ── */
+                #scroll-top {
+                    bottom: 110px;
+                    right: 16px;
+                    width: 36px;
+                    height: 36px;
+                    font-size: 15px;
+                }
+
+                /* ── Annotation bar ── */
+                #annot-bar {
+                    left: 50% !important;
+                    transform: translateX(-50%);
+                }
+
+                /* ── Editor ── */
+                #editor {
+                    font-size: clamp(15px, calc(var(--fs) * 0.88), 20px);
+                }
+            }
+
+            /* Slightly wider phones / small tablets */
+            @media (min-width: 601px) and (max-width: 900px) {
+                #toolbar {
+                    top: 12px;
+                    padding: 4px 8px;
+                    opacity: 1 !important;
+                }
+                .tb-label {
+                    display: none;
+                }
+                #tb-novel-name {
+                    max-width: 100px;
+                    font-size: 12px;
+                }
+
+                #library-panel {
+                    width: 300px;
+                }
+
+                #feat-panel {
+                    width: 240px;
+                    right: 12px;
+                    padding: 16px 14px;
+                }
+
+                #reader-wrap {
+                    padding: 90px 24px 120px;
+                }
+            }
         </style>
     </head>
     <body>
