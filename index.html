@@ -1225,6 +1225,30 @@
                     padding: 90px 24px 120px;
                 }
             }
+
+            /* Per-paragraph play button (visible on mobile, hover on desktop) */
+            .para-play-btn {
+                display: none;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--accent);
+                font-size: 11px;
+                padding: 0 6px 0 0;
+                vertical-align: middle;
+                opacity: 0.5;
+                transition: opacity 0.15s;
+                line-height: inherit;
+            }
+            #reader p:hover .para-play-btn {
+                display: inline;
+            }
+            @media (max-width: 900px) {
+                .para-play-btn {
+                    display: inline !important;
+                    opacity: 0.4;
+                }
+            }
         </style>
     </head>
     <body>
@@ -2562,7 +2586,10 @@
                     .split(/\n\s*\n/)
                     .map((p) => p.trim())
                     .filter(Boolean)
-                    .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`)
+                    .map(
+                        (p, i) =>
+                            `<p><button class="para-play-btn" title="Read from here" onclick="TTS.speakFromPara(this.parentElement)">▶</button>${escHtml(p).replace(/\n/g, "<br>")}</p>`,
+                    )
                     .join("");
             }
             const Reader = (() => {
@@ -2940,46 +2967,36 @@
                     _startOffset = 0,
                     _fullText = "",
                     _paraOffsets = [];
-                let _pendingOffset = null;
-
-                /* Capture selection on mousedown BEFORE click clears it */
-                function _capturePending() {
-                    const sel = window.getSelection();
-                    if (sel && !sel.isCollapsed && sel.rangeCount) {
-                        const range = sel.getRangeAt(0);
-                        if (
-                            Dom.reader.contains(range.commonAncestorContainer)
-                        ) {
-                            _pendingOffset = _walkToNode(
-                                range.startContainer,
-                                range.startOffset,
-                            );
-                            return;
-                        }
-                    }
-                    _pendingOffset = null;
-                }
-                Dom.btnTts.addEventListener("mousedown", _capturePending);
-                Dom.btnTts.addEventListener("touchstart", _capturePending, {
-                    passive: true,
-                });
 
                 function toggle() {
                     if (active) {
                         stop();
                         return;
                     }
-                    const off = _pendingOffset !== null ? _pendingOffset : 0;
-                    _pendingOffset = null;
-                    window.getSelection()?.removeAllRanges();
+                    /* Capture any live selection before it gets cleared */
+                    const sel = window.getSelection();
+                    let off = 0;
+                    if (sel && !sel.isCollapsed && sel.rangeCount) {
+                        const range = sel.getRangeAt(0);
+                        if (
+                            Dom.reader.contains(range.commonAncestorContainer)
+                        ) {
+                            off = _walkToNode(
+                                range.startContainer,
+                                range.startOffset,
+                            );
+                        }
+                    }
+                    sel && sel.removeAllRanges();
                     _speak(off);
                 }
 
                 function stop() {
-                    speechSynthesis.cancel();
+                    if (speechSynthesis.speaking || speechSynthesis.pending) {
+                        speechSynthesis.cancel();
+                    }
                     active = false;
                     _startOffset = 0;
-                    _pendingOffset = null;
                     Dom.btnTts.classList.remove("active");
                     _clearHighlight();
                 }
@@ -3012,15 +3029,16 @@
                         _startOffset > 0 ? full.slice(_startOffset) : full;
                     if (!speakText.trim()) return;
 
-                    /* Cancel previous, then speak SYNCHRONOUSLY in the same user-gesture call stack.
-       Mobile browsers (iOS/Android) block speechSynthesis inside setTimeout —
-       it must be called directly from a user gesture handler. */
-                    speechSynthesis.cancel();
+                    /* Only cancel if something is actually playing — calling cancel() when
+       idle corrupts the speech queue on Android */
+                    if (speechSynthesis.speaking || speechSynthesis.pending) {
+                        speechSynthesis.cancel();
+                    }
 
                     utterance = new SpeechSynthesisUtterance(speakText);
                     utterance.rate = 0.95;
                     utterance.pitch = 1;
-                    utterance.lang = "en-US";
+                    /* Don't force lang — let the browser pick the right voice for the device */
                     utterance.onboundary = (e) => {
                         if (e.name === "word")
                             _highlight(
@@ -3034,14 +3052,16 @@
                         _clearHighlight();
                     };
                     utterance.onerror = (e) => {
-                        if (e.error === "interrupted")
-                            return; /* harmless race after cancel() */
+                        if (e.error === "interrupted" || e.error === "canceled")
+                            return;
                         active = false;
                         Dom.btnTts.classList.remove("active");
                     };
 
                     active = true;
                     Dom.btnTts.classList.add("active");
+                    /* speak() must be called synchronously inside the user-gesture handler.
+       No setTimeout — that breaks mobile. */
                     speechSynthesis.speak(utterance);
                 }
 
@@ -3087,10 +3107,16 @@
                     return 0;
                 }
 
-                Dom.btnTts.title =
-                    "Read aloud — Ctrl+P · select text first to start from selection";
+                /* speakFromPara: called by tap button on each paragraph (mobile) */
+                function speakFromPara(paraEl) {
+                    _snapshot();
+                    const po = _paraOffsets.find((p) => p.el === paraEl);
+                    _speak(po ? po.start : 0);
+                }
 
-                return { toggle, stop };
+                Dom.btnTts.title =
+                    "Read aloud — Ctrl+P · on mobile tap ▶ next to any paragraph";
+                return { toggle, stop, speakFromPara };
             })();
             document.addEventListener("keydown", (e) => {
                 const tag = document.activeElement?.tagName;
