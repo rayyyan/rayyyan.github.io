@@ -2941,38 +2941,55 @@
                     _fullText = "",
                     _paraOffsets = [];
 
-                function toggle() {
-                    if (active) {
-                        stop();
-                        return;
-                    }
+                /* Capture selection on mousedown/touchstart on the TTS button,
+     because the click event fires AFTER the selection is cleared by focus change */
+                let _pendingOffset = null;
+                function _capturePending() {
                     const sel = window.getSelection();
                     if (sel && !sel.isCollapsed && sel.rangeCount) {
                         const range = sel.getRangeAt(0);
                         if (
                             Dom.reader.contains(range.commonAncestorContainer)
                         ) {
-                            const off = _walkToNode(
+                            _pendingOffset = _walkToNode(
                                 range.startContainer,
                                 range.startOffset,
                             );
-                            sel.removeAllRanges();
-                            _speak(off);
                             return;
                         }
                     }
-                    _speak(0);
+                    _pendingOffset = null;
+                }
+                Dom.btnTts.addEventListener("mousedown", _capturePending);
+                Dom.btnTts.addEventListener("touchstart", _capturePending, {
+                    passive: true,
+                });
+
+                function toggle() {
+                    if (active) {
+                        stop();
+                        return;
+                    }
+                    if (_pendingOffset !== null) {
+                        const off = _pendingOffset;
+                        _pendingOffset = null;
+                        window.getSelection()?.removeAllRanges();
+                        _speak(off);
+                    } else {
+                        _speak(0);
+                    }
                 }
 
                 function stop() {
                     speechSynthesis.cancel();
                     active = false;
                     _startOffset = 0;
+                    _pendingOffset = null;
                     Dom.btnTts.classList.remove("active");
                     _clearHighlight();
                 }
 
-                /* Build a snapshot of text + offsets from current DOM — called once before speaking */
+                /* Snapshot para text+offsets from DOM once before speaking */
                 function _snapshot() {
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
                     _paraOffsets = [];
@@ -2984,8 +3001,7 @@
                             start: cursor,
                             end: cursor + t.length,
                         });
-                        cursor +=
-                            t.length + 1; /* +1 for the space we join with */
+                        cursor += t.length + 1;
                         return t;
                     });
                     _fullText = parts.join(" ");
@@ -3001,33 +3017,55 @@
                     const speakText =
                         _startOffset > 0 ? full.slice(_startOffset) : full;
                     if (!speakText.trim()) return;
+
+                    /* Stop any current speech first */
                     speechSynthesis.cancel();
                     active = true;
                     Dom.btnTts.classList.add("active");
-                    utterance = new SpeechSynthesisUtterance(speakText);
-                    utterance.rate = 0.95;
-                    utterance.pitch = 1;
-                    utterance.lang = "en-US";
-                    utterance.onboundary = (e) => {
-                        if (e.name === "word")
-                            _highlight(
-                                _startOffset + e.charIndex,
-                                e.charLength || 1,
-                            );
-                    };
-                    utterance.onend = () => {
-                        active = false;
-                        Dom.btnTts.classList.remove("active");
-                        _clearHighlight();
-                    };
-                    utterance.onerror = () => {
-                        active = false;
-                        Dom.btnTts.classList.remove("active");
-                    };
-                    speechSynthesis.speak(utterance);
+
+                    function doSpeak() {
+                        utterance = new SpeechSynthesisUtterance(speakText);
+                        utterance.rate = 0.95;
+                        utterance.pitch = 1;
+                        utterance.lang = "en-US";
+                        utterance.onboundary = (e) => {
+                            if (e.name === "word")
+                                _highlight(
+                                    _startOffset + e.charIndex,
+                                    e.charLength || 1,
+                                );
+                        };
+                        utterance.onend = () => {
+                            active = false;
+                            Dom.btnTts.classList.remove("active");
+                            _clearHighlight();
+                        };
+                        utterance.onerror = (e) => {
+                            /* 'interrupted' fires when cancel() races with speak() — retry once */
+                            if (e.error === "interrupted") return;
+                            active = false;
+                            Dom.btnTts.classList.remove("active");
+                        };
+                        speechSynthesis.speak(utterance);
+                    }
+
+                    /* Edge/Chrome need a brief gap after cancel() before the next speak(),
+       and voices must be loaded */
+                    const voices = speechSynthesis.getVoices();
+                    if (voices.length) {
+                        setTimeout(doSpeak, 50);
+                    } else {
+                        speechSynthesis.addEventListener(
+                            "voiceschanged",
+                            doSpeak,
+                            { once: true },
+                        );
+                        /* Fallback if voiceschanged never fires */
+                        setTimeout(doSpeak, 300);
+                    }
                 }
 
-                /* Highlight using the frozen snapshot offsets — never re-walks DOM */
+                /* Highlight word using frozen snapshot — never re-walks live DOM */
                 function _highlight(charIdx, charLen) {
                     _clearHighlight();
                     for (const po of _paraOffsets) {
@@ -3056,7 +3094,7 @@
                     });
                 }
 
-                /* Walk text nodes in #reader to find char offset of node+offset */
+                /* Walk text nodes in #reader to get char offset */
                 function _walkToNode(targetNode, targetOffset) {
                     let chars = 0;
                     const walker = document.createTreeWalker(
@@ -3071,7 +3109,7 @@
                     return 0;
                 }
 
-                /* Right-click / long-press context menu */
+                /* Right-click / long-press "Read from here" menu */
                 let _menuEl = null;
                 function _initContextRead() {
                     Dom.reader.addEventListener("contextmenu", (e) => {
@@ -3089,7 +3127,7 @@
                             _lt = setTimeout(() => {
                                 const t = e.touches[0];
                                 _showMenu(t.clientX, t.clientY, para);
-                            }, 500);
+                            }, 600);
                         },
                         { passive: true },
                     );
@@ -3149,8 +3187,7 @@
                         });
                     }
                     mkBtn("▶ Read from paragraph", null, () => {
-                        /* Rebuild snapshot to get fresh offsets, then find this para */
-                        const full = _snapshot();
+                        _snapshot();
                         const po = _paraOffsets.find((p) => p.el === para);
                         _speak(po ? po.start : 0);
                     });
@@ -3167,7 +3204,7 @@
                 }
 
                 Dom.btnTts.title =
-                    "Read aloud (Ctrl+P) · select text then press to start from selection · right-click paragraph for menu";
+                    "Read aloud — Ctrl+P, or select text first, or right-click any paragraph";
                 _initContextRead();
 
                 return { toggle, stop };
