@@ -3,13 +3,15 @@
     <head>
         <meta charset="UTF-8" />
         <title>Edge Reader</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="description" content="Novel chapter reader" />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content="Edge Reader" />
         <link
             href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400&display=swap"
             rel="stylesheet"
         />
         <style>
-            /* §CSS-1  TOKENS */
             :root {
                 --ink: #1a1209;
                 --paper: #f5f0e8;
@@ -34,8 +36,6 @@
                 --border: #2a2318;
                 --shadow: rgba(0, 0, 0, 0.45);
             }
-
-            /* §CSS-2  BASE */
             *,
             *::before,
             *::after {
@@ -56,8 +56,6 @@
                     color 0.4s;
                 overflow-x: hidden;
             }
-
-            /* §CSS-3  NIGHT SHIFT OVERLAY */
             #ns-layer {
                 position: fixed;
                 inset: 0;
@@ -66,8 +64,6 @@
                 pointer-events: none;
                 transition: background 0.6s;
             }
-
-            /* §CSS-4  PROGRESS BAR */
             #progress-wrap {
                 position: fixed;
                 top: 0;
@@ -87,8 +83,6 @@
                 );
                 transition: width 0.5s ease;
             }
-
-            /* §CSS-5  TOOLBAR */
             #toolbar {
                 position: fixed;
                 top: 18px;
@@ -172,8 +166,6 @@
                 background: var(--border);
                 color: var(--ink);
             }
-
-            /* §CSS-6  LIBRARY */
             #library-overlay {
                 position: fixed;
                 inset: 0;
@@ -501,12 +493,17 @@
                 font-size: 15px;
                 line-height: 1.8;
             }
-
-            /* §CSS-7  READER */
             #reader-wrap {
                 max-width: 68ch;
                 margin: 0 auto;
                 padding: 100px 28px 120px;
+            }
+            /* KEY FIX: article wrapper for Edge Read Aloud */
+            #reader-article {
+                display: block;
+            }
+            body.editing #reader-article {
+                display: none;
             }
             #chapter-title {
                 font-family: "Playfair Display", serif;
@@ -542,6 +539,7 @@
                     "onum" 1,
                     "kern" 1;
                 transition: opacity 0.3s;
+                animation: fadeUp 0.35s ease both;
             }
             #reader p:first-of-type {
                 text-indent: 0;
@@ -582,8 +580,6 @@
                 outline: 2px dashed var(--accent) !important;
                 background: rgba(139, 46, 18, 0.04) !important;
             }
-
-            /* §CSS-8  EDITOR */
             #editor {
                 display: none;
                 width: 100%;
@@ -602,9 +598,6 @@
                 color: var(--muted);
                 font-style: italic;
             }
-            body.editing #reader {
-                display: none;
-            }
             body.editing #editor {
                 display: block;
             }
@@ -614,14 +607,10 @@
             body.editing .chapter-rule {
                 display: none !important;
             }
-
-            /* §CSS-9  TTS HIGHLIGHT */
             .tts-word {
                 background: rgba(139, 46, 18, 0.15);
                 border-radius: 3px;
             }
-
-            /* §CSS-10  ANNOTATIONS */
             .annot-span {
                 border-bottom: 2px solid rgba(196, 98, 45, 0.55);
                 cursor: help;
@@ -732,8 +721,6 @@
             .annot-del-btn:hover {
                 color: var(--accent);
             }
-
-            /* §CSS-11  SETTINGS PANEL */
             #feat-panel {
                 position: fixed;
                 right: 24px;
@@ -797,8 +784,6 @@
                 color: var(--muted);
                 font-style: italic;
             }
-
-            /* font picker */
             .font-picker {
                 display: flex;
                 gap: 6px;
@@ -825,8 +810,6 @@
                 background: rgba(139, 46, 18, 0.08);
                 color: var(--accent);
             }
-
-            /* font size stepper */
             .fs-row {
                 display: flex;
                 align-items: center;
@@ -876,8 +859,6 @@
                 min-width: 30px;
                 text-align: center;
             }
-
-            /* sliders */
             .slider-wrap {
                 margin-bottom: 10px;
             }
@@ -904,8 +885,6 @@
                 cursor: pointer;
                 accent-color: var(--accent2);
             }
-
-            /* background presets */
             .bg-presets {
                 display: flex;
                 gap: 6px;
@@ -930,8 +909,6 @@
                 border-color: var(--accent) !important;
                 box-shadow: 0 0 0 2px var(--accent2);
             }
-
-            /* stats grid */
             .stats-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -955,8 +932,6 @@
                 color: var(--muted);
                 margin-top: 1px;
             }
-
-            /* keyboard shortcuts */
             .kbd-list {
                 margin-top: 4px;
             }
@@ -981,8 +956,6 @@
                 padding: 1px 5px;
                 color: var(--ink);
             }
-
-            /* toggle switch */
             .tog {
                 position: relative;
                 width: 38px;
@@ -1020,8 +993,6 @@
             .tog input:checked + .tog-track::after {
                 transform: translateX(18px);
             }
-
-            /* §CSS-12  META BAR */
             #meta-bar {
                 position: fixed;
                 bottom: 0;
@@ -1094,8 +1065,6 @@
             #scroll-top.visible {
                 display: flex;
             }
-
-            /* §CSS-13  ANIMATIONS */
             @keyframes fadeUp {
                 from {
                     opacity: 0;
@@ -1106,16 +1075,11 @@
                     transform: translateY(0);
                 }
             }
-            #reader p {
-                animation: fadeUp 0.35s ease both;
-            }
         </style>
     </head>
     <body>
         <div id="ns-layer"></div>
         <div id="progress-wrap"><div id="progress-fill"></div></div>
-
-        <!-- TOOLBAR -->
         <nav id="toolbar" aria-label="Reader controls">
             <span class="tb-label">EDGE</span>
             <div class="tb-sep"></div>
@@ -1300,8 +1264,6 @@
                 </svg>
             </button>
         </nav>
-
-        <!-- LIBRARY -->
         <div id="library-overlay" onclick="Library.close()"></div>
         <aside id="library-panel" aria-label="Library">
             <div class="lib-header">
@@ -1318,8 +1280,7 @@
                         onkeydown="
                             if (event.key === 'Enter') Library.addNovel();
                         "
-                    />
-                    <button class="lib-add-btn" onclick="Library.addNovel()">
+                    /><button class="lib-add-btn" onclick="Library.addNovel()">
                         Add
                     </button>
                 </div>
@@ -1350,11 +1311,8 @@
             </div>
             <div class="lib-stats" id="lib-stats"></div>
         </aside>
-
-        <!-- SETTINGS PANEL -->
         <div id="feat-panel">
             <h3>Settings</h3>
-
             <div class="feat-sec">Font</div>
             <div class="font-picker" id="font-picker">
                 <button
@@ -1398,25 +1356,22 @@
                     Sans
                 </button>
             </div>
-
             <div class="fs-row">
                 <label>Font size<span>Reading text size</span></label>
                 <div class="fs-stepper">
                     <button class="fs-step-btn" onclick="Reader.changeSize(-1)">
-                        −
-                    </button>
-                    <span id="fs-display">21px</span>
-                    <button class="fs-step-btn" onclick="Reader.changeSize(1)">
+                        −</button
+                    ><span id="fs-display">21px</span
+                    ><button class="fs-step-btn" onclick="Reader.changeSize(1)">
                         +
                     </button>
                 </div>
             </div>
-
             <div class="slider-wrap">
                 <label for="lh-slider"
-                    >Line height<span>Space between lines</span>
-                    <span class="slider-val" id="lh-display">2.05×</span>
-                    <input
+                    >Line height<span>Space between lines</span
+                    ><span class="slider-val" id="lh-display">2.05×</span
+                    ><input
                         type="range"
                         id="lh-slider"
                         min="1.4"
@@ -1426,16 +1381,13 @@
                         oninput="
                             DisplayOptions.setLineHeight(parseFloat(this.value))
                         "
-                    />
-                </label>
+                /></label>
             </div>
-
             <div class="feat-sec">Typography</div>
             <div class="feat-row">
                 <label for="f-dropcap"
                     >Drop cap<span>Styled first letter</span></label
-                >
-                <label class="tog"
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-dropcap"
@@ -1445,10 +1397,8 @@
                 ></label>
             </div>
             <div class="feat-row">
-                <label for="f-indent"
-                    >Indent<span>Para indentation</span></label
-                >
-                <label class="tog"
+                <label for="f-indent">Indent<span>Para indentation</span></label
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-indent"
@@ -1460,8 +1410,7 @@
             <div class="feat-row">
                 <label for="f-title"
                     >Chapter title<span>Auto-detect first line</span></label
-                >
-                <label class="tog"
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-title"
@@ -1470,7 +1419,6 @@
                     <div class="tog-track"></div
                 ></label>
             </div>
-
             <div class="feat-sec">Background</div>
             <div class="bg-presets" id="bg-presets">
                 <button
@@ -1509,13 +1457,11 @@
                     onclick="DisplayOptions.setBg('black', this)"
                 ></button>
             </div>
-
             <div class="feat-sec">Reading</div>
             <div class="feat-row">
                 <label for="f-progress"
                     >Progress bar<span>Top reading %</span></label
-                >
-                <label class="tog"
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-progress"
@@ -1527,8 +1473,7 @@
             <div class="feat-row">
                 <label for="f-focus"
                     >Focus mode<span>Dim other paragraphs</span></label
-                >
-                <label class="tog"
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-focus"
@@ -1536,13 +1481,12 @@
                     <div class="tog-track"></div
                 ></label>
             </div>
-
             <div class="feat-sec">Display</div>
             <div class="slider-wrap">
                 <label for="ns-slider"
-                    >Night shift<span>Warm amber overlay</span>
-                    <span class="slider-val" id="ns-display">0%</span>
-                    <input
+                    >Night shift<span>Warm amber overlay</span
+                    ><span class="slider-val" id="ns-display">0%</span
+                    ><input
                         type="range"
                         id="ns-slider"
                         min="0"
@@ -1550,16 +1494,13 @@
                         step="0.01"
                         value="0"
                         oninput="NightShift.set(parseFloat(this.value))"
-                    />
-                </label>
+                /></label>
             </div>
-
             <div class="feat-sec">Annotations</div>
             <div class="feat-row">
                 <label for="f-annot"
                     >Annotations<span>Highlight &amp; note text</span></label
-                >
-                <label class="tog"
+                ><label class="tog"
                     ><input
                         type="checkbox"
                         id="f-annot"
@@ -1568,7 +1509,6 @@
                 ></label>
             </div>
             <div id="annot-list-wrap"><div id="annot-list"></div></div>
-
             <div class="feat-sec">Stats</div>
             <div class="stats-grid">
                 <div class="stat-cell">
@@ -1588,7 +1528,6 @@
                     <div class="stat-lbl">This session</div>
                 </div>
             </div>
-
             <div class="feat-sec">Shortcuts</div>
             <div class="kbd-list">
                 <div class="kbd-row">
@@ -1614,25 +1553,25 @@
                 </div>
             </div>
         </div>
-
-        <!-- ANNOTATION BAR -->
         <div id="annot-bar">
             <button onclick="Annotations.addFromSelection()">+ Note</button>
             <button onclick="Annotations.hideBar()">✕</button>
         </div>
-
-        <!-- READER -->
+        <!-- KEY FIX: <article> wrapper makes Edge Read Aloud / Immersive Reader
+     detect and read the content. Edge looks for <article> or <main>
+     with substantial <p> blocks. The article stays in DOM always;
+     only hidden via CSS when body.editing is active. -->
         <main id="reader-wrap">
-            <h1 id="chapter-title"></h1>
-            <div class="chapter-rule" id="chapter-rule"></div>
-            <div id="reader"></div>
+            <article id="reader-article" lang="en">
+                <h1 id="chapter-title"></h1>
+                <div class="chapter-rule" id="chapter-rule"></div>
+                <div id="reader"></div>
+            </article>
             <textarea
                 id="editor"
                 placeholder="Paste your chapter here…&#10;&#10;Or drag-and-drop a .txt file.&#10;&#10;Switch to Read mode when done.&#10;&#10;Tip: a short first line becomes the chapter title."
             ></textarea>
         </main>
-
-        <!-- META BAR -->
         <div id="meta-bar">
             <span>📄 <span id="wc">0</span> words</span>
             <span>📍 <span id="pct-label">0%</span> read</span>
@@ -1651,7 +1590,6 @@
                 onchange="IO.importTxt(this)"
             />
         </div>
-
         <button
             id="scroll-top"
             title="Back to top"
@@ -1659,20 +1597,10 @@
         >
             ↑
         </button>
-
         <script>
             "use strict";
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §0  STORAGE ADAPTER  —  factory pattern
-   Swap the backend by replacing LocalStorageBackend with any object
-   that implements: get, set, getObj, setObj, del, exportAll, importAll
-   e.g. for React Native: AsyncStorageBackend
-        for Electron:     FsBackend
-        for cloud:        SupabaseBackend
-═══════════════════════════════════════════════════════════════════ */
             const StorageAdapter = (() => {
-                const LocalStorageBackend = {
+                const B = {
                     get: (k, fb = null) => {
                         const v = localStorage.getItem(k);
                         return v !== null ? v : fb;
@@ -1709,15 +1637,9 @@
                         );
                     },
                 };
-                /* ← swap here to change backend */
-                return LocalStorageBackend;
+                return B;
             })();
-            const Store = StorageAdapter; /* alias used throughout */
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §1  DB  —  novels / chapters
-   Schema: [ { id, title, chapters: [{id,title,text,offset,annotations:[]}] } ]
-═══════════════════════════════════════════════════════════════════ */
+            const Store = StorageAdapter;
             const DB = (() => {
                 const KN = "er_novels",
                     KNI = "er_active_novel",
@@ -1733,7 +1655,6 @@
                     Store.set(KNI, n);
                     Store.set(KCI, c);
                 };
-
                 function getActive() {
                     const novels = load();
                     const novel =
@@ -1744,8 +1665,6 @@
                         ) || null;
                     return { novel, chapter };
                 }
-
-                /* novels */
                 function addNovel(title) {
                     const novels = load(),
                         n = { id: uid(), title: title.trim(), chapters: [] };
@@ -1765,8 +1684,6 @@
                         save(novels);
                     }
                 }
-
-                /* chapters */
                 function addChapter(nid, title) {
                     const novels = load(),
                         novel = novels.find((n) => n.id === nid);
@@ -1817,7 +1734,6 @@
                             ?.chapters.find((c) => c.id === cid) || null
                     );
                 }
-
                 return {
                     load,
                     save,
@@ -1835,10 +1751,6 @@
                     getChapter,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §2  SETTINGS  —  all persisted preferences
-═══════════════════════════════════════════════════════════════════ */
             const Settings = {
                 getFs: () => parseFloat(Store.get("er_fs", "21")),
                 setFs: (v) => Store.set("er_fs", v),
@@ -1855,12 +1767,9 @@
                 getBg: () => Store.get("er_bg", "parchment"),
                 setBg: (v) => Store.set("er_bg", v),
             };
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §3  DOM REFERENCES
-═══════════════════════════════════════════════════════════════════ */
             const Dom = {
                 reader: document.getElementById("reader"),
+                readerArticle: document.getElementById("reader-article"),
                 editor: document.getElementById("editor"),
                 chTitle: document.getElementById("chapter-title"),
                 chRule: document.getElementById("chapter-rule"),
@@ -1893,10 +1802,6 @@
                 statStreak: document.getElementById("stat-streak"),
                 statSession: document.getElementById("stat-session"),
             };
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §4  THEME
-═══════════════════════════════════════════════════════════════════ */
             const Theme = {
                 apply: () => {
                     document.documentElement.dataset.theme =
@@ -1909,17 +1814,13 @@
                     Theme.apply();
                 },
             };
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §5  FONT PICKER
-═══════════════════════════════════════════════════════════════════ */
             const FontPicker = (() => {
                 const FONTS = {
-                    cormorant: "'Cormorant Garamond', Georgia, serif",
-                    lora: "'Lora', Georgia, serif",
-                    merriweather: "'Merriweather', Georgia, serif",
-                    georgia: "Georgia, 'Times New Roman', serif",
-                    sans: "system-ui, -apple-system, sans-serif",
+                    cormorant: "'Cormorant Garamond',Georgia,serif",
+                    lora: "'Lora',Georgia,serif",
+                    merriweather: "'Merriweather',Georgia,serif",
+                    georgia: "Georgia,'Times New Roman',serif",
+                    sans: "system-ui,-apple-system,sans-serif",
                 };
                 function apply(key) {
                     document.documentElement.style.setProperty(
@@ -1944,12 +1845,7 @@
                 }
                 return { apply, set, load };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §6  DISPLAY OPTIONS  —  line height + background presets
-═══════════════════════════════════════════════════════════════════ */
             const DisplayOptions = (() => {
-                /* background preset definitions: paper bg, paper2, ink, border */
                 const BG = {
                     parchment: {
                         paper: "#f5f0e8",
@@ -1982,7 +1878,6 @@
                         border: "#2a2a2a",
                     },
                 };
-
                 function applyBg(key) {
                     const bg = BG[key] || BG.parchment;
                     const r = document.documentElement.style;
@@ -1996,28 +1891,23 @@
                             b.classList.toggle("active", b.dataset.bg === key),
                         );
                 }
-
                 function setBg(key, _btn) {
                     Settings.setBg(key);
                     applyBg(key);
                 }
-
                 function applyLineHeight(val) {
                     document.documentElement.style.setProperty("--lh", val);
                     Dom.lhSlider.value = val;
                     Dom.lhDisplay.textContent = val.toFixed(2) + "×";
                 }
-
                 function setLineHeight(val) {
                     Settings.setLh(val);
                     applyLineHeight(val);
                 }
-
                 function loadAll() {
                     applyBg(Settings.getBg());
                     applyLineHeight(Settings.getLh());
                 }
-
                 return {
                     setBg,
                     applyBg,
@@ -2026,10 +1916,6 @@
                     loadAll,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §7  NIGHT SHIFT
-═══════════════════════════════════════════════════════════════════ */
             const NightShift = {
                 apply: () => {
                     const v = Settings.getNs();
@@ -2051,14 +1937,9 @@
                         Math.round((v / 0.35) * 100) + "%";
                 },
             };
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §8  FOCUS MODE
-═══════════════════════════════════════════════════════════════════ */
             const FocusMode = (() => {
                 let active = false,
                     rafId = null;
-
                 function _update() {
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
                     if (!paras.length) return;
@@ -2078,12 +1959,10 @@
                     );
                     rafId = null;
                 }
-
                 function _onScroll() {
                     if (!active || rafId) return;
                     rafId = requestAnimationFrame(_update);
                 }
-
                 function toggle(on) {
                     active = on;
                     document.body.classList.toggle("focus-mode", on);
@@ -2102,16 +1981,11 @@
                     f["f-focus"] = on;
                     Settings.setFeats(f);
                 }
-
                 function refresh() {
                     if (active) _update();
                 }
                 return { toggle, refresh };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §9  FEATURES  —  drop cap, indent, title, progress
-═══════════════════════════════════════════════════════════════════ */
             const Features = (() => {
                 const TOGGLE_IDS = [
                     "f-dropcap",
@@ -2119,7 +1993,6 @@
                     "f-title",
                     "f-progress",
                 ];
-
                 function load() {
                     const saved = Settings.getFeats();
                     TOGGLE_IDS.forEach((id) => {
@@ -2137,7 +2010,6 @@
                         if (saved["f-annot"]) Annotations.toggleMode(true);
                     }
                 }
-
                 function apply() {
                     const saved = Settings.getFeats();
                     TOGGLE_IDS.forEach((id) => {
@@ -2145,35 +2017,18 @@
                         if (el) saved[id] = el.checked;
                     });
                     Settings.setFeats(saved);
-
                     const dropcap =
                         document.getElementById("f-dropcap").checked;
                     const indent = document.getElementById("f-indent").checked;
                     const progress =
                         document.getElementById("f-progress").checked;
-
                     let s = document.getElementById("dyn-style");
                     if (!s) {
                         s = document.createElement("style");
                         s.id = "dyn-style";
                         document.head.appendChild(s);
                     }
-                    s.textContent = `
-      #reader p{text-indent:${indent ? "2em" : "0"}!important;}
-      #reader p:first-of-type{text-indent:0!important;}
-      #reader p:first-of-type::first-letter{
-        font-family:${dropcap ? "'Playfair Display',serif" : "inherit"};
-        font-size:${dropcap ? "3.6em" : "inherit"};
-        font-weight:${dropcap ? "600" : "inherit"};
-        float:${dropcap ? "left" : "none"};
-        line-height:${dropcap ? ".75" : "inherit"};
-        margin-right:${dropcap ? ".1em" : "0"};
-        margin-top:${dropcap ? ".1em" : "0"};
-        color:${dropcap ? "var(--accent)" : "inherit"};
-      }
-      #progress-wrap{display:${progress ? "block" : "none"}!important;}
-    `;
-
+                    s.textContent = `#reader p{text-indent:${indent ? "2em" : "0"}!important;}#reader p:first-of-type{text-indent:0!important;}#reader p:first-of-type::first-letter{font-family:${dropcap ? "'Playfair Display',serif" : "inherit"};font-size:${dropcap ? "3.6em" : "inherit"};font-weight:${dropcap ? "600" : "inherit"};float:${dropcap ? "left" : "none"};line-height:${dropcap ? ".75" : "inherit"};margin-right:${dropcap ? ".1em" : "0"};margin-top:${dropcap ? ".1em" : "0"};color:${dropcap ? "var(--accent)" : "inherit"};}#progress-wrap{display:${progress ? "block" : "none"}!important;}`;
                     if (!document.getElementById("f-title").checked) {
                         Dom.chTitle.classList.remove("visible");
                         Dom.chRule.classList.remove("visible");
@@ -2181,21 +2036,15 @@
                         Reader.renderTitle();
                     }
                 }
-
                 const togglePanel = () =>
                     document
                         .getElementById("feat-panel")
                         .classList.toggle("open");
                 return { load, apply, togglePanel };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §10  ANNOTATIONS
-═══════════════════════════════════════════════════════════════════ */
             const Annotations = (() => {
                 let modeOn = false,
                     _pendingSel = null;
-
                 function toggleMode(on) {
                     modeOn = on;
                     const f = Settings.getFeats();
@@ -2205,7 +2054,6 @@
                     if (!on) hideBar();
                     renderAnnotList();
                 }
-
                 function showBar(x, y) {
                     Dom.annotBar.style.left = x + "px";
                     Dom.annotBar.style.top = y - 44 + "px";
@@ -2215,7 +2063,6 @@
                     Dom.annotBar.classList.remove("visible");
                     _pendingSel = null;
                 }
-
                 Dom.reader.addEventListener("mouseup", () => {
                     if (!modeOn) return;
                     const sel = window.getSelection();
@@ -2235,7 +2082,6 @@
                         rect.top + window.scrollY,
                     );
                 });
-
                 function addFromSelection() {
                     if (!_pendingSel) return;
                     const selText = _pendingSel.toString().trim();
@@ -2272,7 +2118,6 @@
                     window.getSelection().removeAllRanges();
                     Reader.enterReading();
                 }
-
                 function _charsToRangeStart(range) {
                     let chars = 0;
                     const walker = document.createTreeWalker(
@@ -2289,7 +2134,6 @@
                     }
                     return chars;
                 }
-
                 function deleteAnnot(id) {
                     const { novel: n, chapter: c } = DB.getActive();
                     if (!n || !c || !Array.isArray(c.annotations)) return;
@@ -2298,7 +2142,6 @@
                     });
                     Reader.enterReading();
                 }
-
                 function applyToReader() {
                     const { chapter: c } = DB.getActive();
                     if (
@@ -2312,7 +2155,6 @@
                     );
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
                     let gOffset = 0;
-
                     for (const p of paras) {
                         const pText = p.textContent,
                             pLen = pText.length;
@@ -2345,29 +2187,21 @@
                         gOffset = pEnd;
                     }
                 }
-
                 function renderAnnotList() {
                     if (!modeOn) return;
                     const { chapter: c } = DB.getActive();
                     const annots = c?.annotations || [];
                     if (!annots.length) {
-                        Dom.annotList.innerHTML = `<div style="font-size:12px;font-style:italic;color:var(--muted);padding:4px 0">No annotations yet. Enable and select text to highlight.</div>`;
+                        Dom.annotList.innerHTML = `<div style="font-size:12px;font-style:italic;color:var(--muted);padding:4px 0">No annotations yet.</div>`;
                         return;
                     }
                     Dom.annotList.innerHTML = annots
                         .map(
-                            (a) => `
-      <div class="annot-list-item">
-        <div style="flex:1">
-          <div class="annot-list-quote">"${escHtml(a.quote)}"</div>
-          ${a.note ? `<div class="annot-list-note">${escHtml(a.note)}</div>` : ""}
-        </div>
-        <button class="annot-del-btn" onclick="Annotations.deleteAnnot('${a.id}')" title="Delete">✕</button>
-      </div>`,
+                            (a) =>
+                                `<div class="annot-list-item"><div style="flex:1"><div class="annot-list-quote">"${escHtml(a.quote)}"</div>${a.note ? `<div class="annot-list-note">${escHtml(a.note)}</div>` : ""}</div><button class="annot-del-btn" onclick="Annotations.deleteAnnot('${a.id}')" title="Delete">✕</button></div>`,
                         )
                         .join("");
                 }
-
                 return {
                     toggleMode,
                     hideBar,
@@ -2377,51 +2211,27 @@
                     renderAnnotList,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §11  SESSION TIMER + PERSISTENT READING STATS
-   Persisted keys:
-     er_stat_today_date   — "YYYY-MM-DD"
-     er_stat_today_min    — minutes read today (integer)
-     er_stat_total_min    — all-time minutes (integer)
-     er_stat_streak       — current day streak (integer)
-     er_stat_last_read    — last date a reading session occurred
-═══════════════════════════════════════════════════════════════════ */
             const SessionTimer = (() => {
                 let seconds = 0,
                     reading = false;
-
                 function _today() {
                     return new Date().toISOString().slice(0, 10);
                 }
-
                 function _tick() {
                     if (!reading || document.hidden) return;
                     seconds++;
-                    /* every 30s flush to persistent storage */
                     if (seconds % 30 === 0) _flushMinute();
                     _renderAll();
                 }
-
                 function _flushMinute() {
                     const today = _today();
                     const storedDate = Store.get("er_stat_today_date", "");
-                    let todayMin =
-                        parseInt(Store.get("er_stat_today_min", "0"), 10) || 0;
                     let totalMin =
                         parseInt(Store.get("er_stat_total_min", "0"), 10) || 0;
                     let streak =
                         parseInt(Store.get("er_stat_streak", "0"), 10) || 0;
                     const lastRead = Store.get("er_stat_last_read", "");
-
-                    const addMin = Math.floor(
-                        30 / 60,
-                    ); /* 30s = 0 full minutes; we use seconds for accuracy */
-                    /* increment at whole-minute boundaries in _renderAll instead */
-
-                    /* streak logic: update only when we cross a new day */
                     if (storedDate !== today) {
-                        /* new day */
                         const yesterday = new Date(Date.now() - 864e5)
                             .toISOString()
                             .slice(0, 10);
@@ -2430,52 +2240,41 @@
                         else if (lastRead !== today) streak = 1;
                         Store.set("er_stat_today_date", today);
                         Store.set("er_stat_today_min", "0");
-                        todayMin = 0;
                     }
-
-                    /* save current elapsed minutes */
                     const elapsedMin = Math.floor(seconds / 60);
                     Store.set("er_stat_today_min", elapsedMin);
                     Store.set("er_stat_total_min", totalMin + elapsedMin);
                     Store.set("er_stat_streak", streak);
                     Store.set("er_stat_last_read", today);
                 }
-
                 function _renderAll() {
                     const sessionMin = Math.floor(seconds / 60);
                     const sessionSec = seconds % 60;
-
-                    /* meta bar badge */
                     Dom.metaSession.textContent = `🕐 ${sessionMin}m${sessionSec > 0 ? ` ${sessionSec}s` : ""}`;
-
-                    /* stats panel */
                     const today = _today();
                     const storedDate = Store.get("er_stat_today_date", "");
                     const todayMin =
-                        storedDate === today
-                            ? (parseInt(
+                        (storedDate === today
+                            ? parseInt(
                                   Store.get("er_stat_today_min", "0"),
                                   10,
-                              ) || 0) + sessionMin
-                            : sessionMin;
+                              ) || 0
+                            : 0) + sessionMin;
                     const totalMin =
                         (parseInt(Store.get("er_stat_total_min", "0"), 10) ||
                             0) + sessionMin;
                     const streak =
                         parseInt(Store.get("er_stat_streak", "0"), 10) || 0;
-
                     Dom.statToday.textContent = _fmt(todayMin);
                     Dom.statTotal.textContent = _fmt(totalMin);
                     Dom.statStreak.textContent = streak;
                     Dom.statSession.textContent = _fmt(sessionMin);
                 }
-
                 function _fmt(min) {
                     return min >= 60
                         ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ""}`
-                        : `${min}m`;
+                        : ` ${min}m`;
                 }
-
                 function startReading() {
                     reading = true;
                 }
@@ -2487,13 +2286,8 @@
                     setInterval(_tick, 1000);
                     _renderAll();
                 }
-
                 return { startReading, stopReading, init };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §12  IO  —  import / export
-═══════════════════════════════════════════════════════════════════ */
             const IO = (() => {
                 function _dl(name, content, mime = "text/plain") {
                     const a = document.createElement("a");
@@ -2504,7 +2298,6 @@
                     a.click();
                     URL.revokeObjectURL(a.href);
                 }
-
                 function importTxt(input) {
                     const file = input.files[0];
                     if (!file) return;
@@ -2516,7 +2309,6 @@
                     };
                     fr.readAsText(file);
                 }
-
                 function exportChapter() {
                     const { novel, chapter } = DB.getActive();
                     if (!novel || !chapter) return;
@@ -2528,7 +2320,6 @@
                         chapter.text,
                     );
                 }
-
                 function exportBackup() {
                     const json = JSON.stringify(Store.exportAll(), null, 2);
                     _dl(
@@ -2537,7 +2328,6 @@
                         "application/json",
                     );
                 }
-
                 function importBackup() {
                     const input = document.createElement("input");
                     input.type = "file";
@@ -2565,7 +2355,6 @@
                     };
                     input.click();
                 }
-
                 function initDragDrop() {
                     document.addEventListener("dragover", (e) => {
                         if (e.dataTransfer.types.includes("Files")) {
@@ -2591,7 +2380,6 @@
                         fr.readAsText(file);
                     });
                 }
-
                 return {
                     importTxt,
                     exportChapter,
@@ -2600,16 +2388,11 @@
                     initDragDrop,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §13  UTIL
-═══════════════════════════════════════════════════════════════════ */
             function escHtml(str) {
                 const d = document.createElement("div");
                 d.textContent = str;
                 return d.innerHTML;
             }
-
             function buildReaderHtml(text, titleAlreadyShown) {
                 if (!text.trim())
                     return `<div class="empty-state"><strong>Nothing here yet.</strong>Switch to Edit mode or drag a .txt file to begin reading.</div>`;
@@ -2632,12 +2415,6 @@
                     .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`)
                     .join("");
             }
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §14  READER  —  modes, mark-as-read (non-destructive), font, progress
-   mark-as-read advances `offset` — text is NEVER destroyed.
-   resetProgress sets offset back to 0.
-═══════════════════════════════════════════════════════════════════ */
             const Reader = (() => {
                 const _ch = () => DB.getActive().chapter;
                 const _text = () => _ch()?.text ?? "";
@@ -2651,7 +2428,6 @@
                     const { novel: n, chapter: c } = DB.getActive();
                     if (n && c) DB.updateChapter(n.id, c.id, f);
                 };
-
                 function renderTitle() {
                     if (!document.getElementById("f-title").checked)
                         return false;
@@ -2666,7 +2442,6 @@
                     Dom.chRule.classList.toggle("visible", show);
                     return show;
                 }
-
                 function enterReading() {
                     TTS.stop();
                     const titleShown = renderTitle();
@@ -2685,8 +2460,19 @@
                     Annotations.renderAnnotList();
                     FocusMode.refresh();
                     SessionTimer.startReading();
+                    /* KEY FIX: update <title> and og:title so Edge Read Aloud sees the chapter name */
+                    const { novel, chapter } = DB.getActive();
+                    const pageTitle =
+                        novel && chapter
+                            ? `${chapter.title} — ${novel.title}`
+                            : "Edge Reader";
+                    document.title = pageTitle;
+                    let ogTitle = document.querySelector(
+                        'meta[property="og:title"]',
+                    );
+                    if (ogTitle) ogTitle.setAttribute("content", pageTitle);
+                    Dom.readerArticle.setAttribute("lang", "en");
                 }
-
                 function enterEdit() {
                     TTS.stop();
                     Annotations.hideBar();
@@ -2698,7 +2484,6 @@
                     updateMeta();
                     SessionTimer.stopReading();
                 }
-
                 let _saveTimer;
                 Dom.editor.addEventListener("input", () => {
                     clearTimeout(_saveTimer);
@@ -2713,7 +2498,6 @@
                         updateMeta();
                     }, 300);
                 });
-
                 function applyFontSize() {
                     const fs = Settings.getFs();
                     document.documentElement.style.setProperty(
@@ -2729,20 +2513,14 @@
                     );
                     applyFontSize();
                 }
-
                 function updateProgress() {
                     const t = _text(),
                         o = _offset();
                     const pct = t.length ? (o / t.length) * 100 : 0;
                     Dom.progFill.style.width = pct + "%";
                     Dom.metaPct.textContent = Math.round(pct) + "%";
-                    document.title =
-                        pct >= 99
-                            ? "Edge Reader ✓"
-                            : `Edge Reader (${Math.round(pct)}%)`;
                     Library.render();
                 }
-
                 function updateMeta() {
                     const vt = _visible(),
                         allText = _text();
@@ -2758,14 +2536,11 @@
                         : "0%";
                     updateProgress();
                 }
-
-                /* non-destructive mark-as-read: advances offset, never deletes text */
                 function markAsRead() {
                     const sel = window.getSelection();
                     const vt = _visible();
                     const { novel: n, chapter: c } = DB.getActive();
                     if (!n || !c) return;
-
                     let advance;
                     if (!sel.rangeCount || sel.isCollapsed) {
                         const nb = vt.indexOf("\n\n");
@@ -2789,14 +2564,12 @@
                         }
                         advance = found ? chars : 0;
                     }
-
                     DB.updateChapter(n.id, c.id, {
                         offset: Math.min(c.text.length, c.offset + advance),
                     });
                     sel.removeAllRanges();
                     enterReading();
                 }
-
                 function resetProgress() {
                     if (
                         !confirm(
@@ -2808,14 +2581,12 @@
                     if (n && c) DB.updateChapter(n.id, c.id, { offset: 0 });
                     enterReading();
                 }
-
                 function switchTo(nid, cid) {
                     DB.setActive(nid, cid);
                     updateNovelBadge();
                     Library.render();
                     enterReading();
                 }
-
                 function updateNovelBadge() {
                     const { novel, chapter } = DB.getActive();
                     Dom.novelBadge.textContent =
@@ -2825,7 +2596,6 @@
                               ? novel.title
                               : "—";
                 }
-
                 return {
                     enterReading,
                     enterEdit,
@@ -2840,10 +2610,6 @@
                     updateNovelBadge,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §15  LIBRARY
-═══════════════════════════════════════════════════════════════════ */
             const Library = (() => {
                 function open() {
                     render();
@@ -2859,7 +2625,6 @@
                 function toggle() {
                     Dom.libPanel.classList.contains("open") ? close() : open();
                 }
-
                 function addNovel() {
                     const title = Dom.novelInput.value.trim();
                     if (!title) {
@@ -2875,7 +2640,6 @@
                     close();
                     Reader.enterEdit();
                 }
-
                 function deleteNovel(nid) {
                     const novels = DB.load(),
                         novel = novels.find((n) => n.id === nid);
@@ -2896,7 +2660,6 @@
                     render();
                     Reader.enterReading();
                 }
-
                 function renameNovel(nid) {
                     const n = DB.load().find((x) => x.id === nid);
                     if (!n) return;
@@ -2906,7 +2669,6 @@
                     Reader.updateNovelBadge();
                     render();
                 }
-
                 function addChapter(nid) {
                     const novel = DB.load().find((n) => n.id === nid);
                     if (!novel) return;
@@ -2920,7 +2682,6 @@
                     close();
                     Reader.enterEdit();
                 }
-
                 function deleteChapter(nid, cid) {
                     const ch = DB.getChapter(nid, cid);
                     if (!ch || !confirm(`Delete "${ch.title}"?`)) return;
@@ -2940,7 +2701,6 @@
                     render();
                     Reader.enterReading();
                 }
-
                 function renameChapter(nid, cid) {
                     const ch = DB.getChapter(nid, cid);
                     if (!ch) return;
@@ -2950,13 +2710,11 @@
                     Reader.updateNovelBadge();
                     render();
                 }
-
                 function chPct(ch) {
                     return ch.text.length
                         ? Math.round((ch.offset / ch.text.length) * 100)
                         : 0;
                 }
-
                 function render() {
                     const novels = DB.load(),
                         activeN = DB.activeNovelId(),
@@ -2966,7 +2724,6 @@
                         _renderStats(novels);
                         return;
                     }
-
                     Dom.novelsList.innerHTML = novels
                         .map((novel) => {
                             const isActive = novel.id === activeN;
@@ -2975,35 +2732,14 @@
                                     const pct = chPct(ch),
                                         isActiveCh =
                                             ch.id === activeC && isActive;
-                                    return `<div class="ch-item ${isActiveCh ? "active-ch" : ""} ${pct >= 99 ? "ch-done" : ""}" onclick="Library._selectCh('${novel.id}','${ch.id}')">
-          <div class="ch-dot"></div>
-          <span class="ch-name">${escHtml(ch.title)}</span>
-          <span class="ch-pct">${pct > 0 ? pct + "%" : ""}</span>
-          <div class="ch-actions">
-            <button class="ch-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameChapter('${novel.id}','${ch.id}')">✎</button>
-            <button class="ch-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteChapter('${novel.id}','${ch.id}')">✕</button>
-          </div>
-        </div>`;
+                                    return `<div class="ch-item ${isActiveCh ? "active-ch" : ""} ${pct >= 99 ? "ch-done" : ""}" onclick="Library._selectCh('${novel.id}','${ch.id}')"><div class="ch-dot"></div><span class="ch-name">${escHtml(ch.title)}</span><span class="ch-pct">${pct > 0 ? pct + "%" : ""}</span><div class="ch-actions"><button class="ch-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameChapter('${novel.id}','${ch.id}')">✎</button><button class="ch-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteChapter('${novel.id}','${ch.id}')">✕</button></div></div>`;
                                 })
                                 .join("");
-
-                            return `<div class="novel-item ${isActive ? "expanded active-novel" : ""}" id="ni-${novel.id}">
-        <div class="novel-header" onclick="Library._toggleNovel('${novel.id}')">
-          <span class="novel-arrow">▶</span>
-          <span class="novel-title-text">${escHtml(novel.title)}</span>
-          <span class="novel-ch-count">${novel.chapters.length} ch</span>
-          <div class="novel-actions">
-            <button class="novel-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameNovel('${novel.id}')">✎</button>
-            <button class="novel-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteNovel('${novel.id}')">🗑</button>
-          </div>
-        </div>
-        <div class="novel-chapters">${chHtml}<button class="add-ch-btn" onclick="Library.addChapter('${novel.id}')">+ Add chapter</button></div>
-      </div>`;
+                            return `<div class="novel-item ${isActive ? "expanded active-novel" : ""}" id="ni-${novel.id}"><div class="novel-header" onclick="Library._toggleNovel('${novel.id}')"><span class="novel-arrow">▶</span><span class="novel-title-text">${escHtml(novel.title)}</span><span class="novel-ch-count">${novel.chapters.length} ch</span><div class="novel-actions"><button class="novel-act-btn" title="Rename" onclick="event.stopPropagation();Library.renameNovel('${novel.id}')">✎</button><button class="novel-act-btn" title="Delete" onclick="event.stopPropagation();Library.deleteNovel('${novel.id}')">🗑</button></div></div><div class="novel-chapters">${chHtml}<button class="add-ch-btn" onclick="Library.addChapter('${novel.id}')">+ Add chapter</button></div></div>`;
                         })
                         .join("");
                     _renderStats(novels);
                 }
-
                 function _renderStats(novels) {
                     let totalWords = 0,
                         totalChapters = 0,
@@ -3022,13 +2758,8 @@
                                 totalDone++;
                         }),
                     );
-                    Dom.libStats.innerHTML = `
-      <span>📚 ${novels.length} novel${novels.length !== 1 ? "s" : ""}</span>
-      <span>📄 ${totalChapters} ch</span>
-      <span>✅ ${totalDone} done</span>
-      <span>~${Math.round(totalWords / 250)} min total</span>`;
+                    Dom.libStats.innerHTML = `<span>📚 ${novels.length} novel${novels.length !== 1 ? "s" : ""}</span><span>📄 ${totalChapters} ch</span><span>✅ ${totalDone} done</span><span>~${Math.round(totalWords / 250)} min total</span>`;
                 }
-
                 function _toggleNovel(nid) {
                     document
                         .getElementById("ni-" + nid)
@@ -3038,7 +2769,6 @@
                     Reader.switchTo(nid, cid);
                     close();
                 }
-
                 return {
                     open,
                     close,
@@ -3054,24 +2784,18 @@
                     _selectCh,
                 };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §16  TTS  —  reads ONLY from #reader paragraphs
-═══════════════════════════════════════════════════════════════════ */
             const TTS = (() => {
                 let active = false,
                     utterance = null;
                 function toggle() {
                     active ? stop() : start();
                 }
-
                 function stop() {
                     speechSynthesis.cancel();
                     active = false;
                     Dom.btnTts.classList.remove("active");
                     _clear();
                 }
-
                 function start() {
                     if (document.body.classList.contains("editing"))
                         Reader.enterReading();
@@ -3107,7 +2831,6 @@
                     };
                     speechSynthesis.speak(utterance);
                 }
-
                 function _clear() {
                     Dom.reader
                         .querySelectorAll(".tts-word")
@@ -3117,7 +2840,6 @@
                             ),
                         );
                 }
-
                 function _highlight(fullText, charIdx, charLen) {
                     _clear();
                     const paras = Array.from(Dom.reader.querySelectorAll("p"));
@@ -3143,18 +2865,11 @@
                         offset = pEnd;
                     }
                 }
-
                 return { toggle, stop, start };
             })();
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §17  KEYBOARD SHORTCUTS
-═══════════════════════════════════════════════════════════════════ */
             document.addEventListener("keydown", (e) => {
                 const tag = document.activeElement?.tagName;
                 const typing = tag === "TEXTAREA" || tag === "INPUT";
-
-                /* shortcuts that work even while typing */
                 if (e.ctrlKey || e.metaKey) {
                     if (e.key === "e" || e.key === "E") {
                         e.preventDefault();
@@ -3189,8 +2904,6 @@
                         return;
                     }
                 }
-
-                /* shortcuts that only fire when NOT typing */
                 if (!typing) {
                     if (e.key === "]") {
                         Reader.changeSize(1);
@@ -3202,10 +2915,6 @@
                     }
                 }
             });
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §18  SCROLL & MISC LISTENERS
-═══════════════════════════════════════════════════════════════════ */
             window.addEventListener(
                 "scroll",
                 () => {
@@ -3217,20 +2926,15 @@
                 },
                 { passive: true },
             );
-
-            /* ═══════════════════════════════════════════════════════════════════
-   §19  INIT
-═══════════════════════════════════════════════════════════════════ */
             (function init() {
                 Theme.apply();
                 FontPicker.load();
-                DisplayOptions.loadAll(); /* bg presets + line height */
+                DisplayOptions.loadAll();
                 NightShift.apply();
                 Features.load();
                 Reader.applyFontSize();
                 SessionTimer.init();
                 IO.initDragDrop();
-
                 if (!DB.load().length) {
                     const n = DB.addNovel("My Novel"),
                         ch = DB.addChapter(n.id, "Chapter 1");
@@ -3240,10 +2944,8 @@
                     if (novels.length && novels[0].chapters.length)
                         DB.setActive(novels[0].id, novels[0].chapters[0].id);
                 }
-
                 Reader.updateNovelBadge();
                 Library.render();
-
                 const { chapter } = DB.getActive();
                 chapter?.text ? Reader.enterReading() : Reader.enterEdit();
             })();
